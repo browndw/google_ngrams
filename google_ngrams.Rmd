@@ -1,0 +1,111 @@
+---
+title: "google_ngrams"
+output: html_document
+author: "David Brown"
+---
+
+
+## Google Ngrams
+
+This notebook contains functions for processing Google's Ngram repositories <http://storage.googleapis.com/books/ngrams/books/datasetsv2.html> without having to download them locally. These repositories vary in their size, but the larger ones contain multiple gigabytes. So depending on the specific word forms being searched, loading and processing the data tables can take up to a couple of minutes.
+
+The google_ngram() function takes three arguments: word_forms, variety, and by. The first can be a single word like "teenager" or lemmas like "walk", "walks" and "walked" that are put into a vector: c("walk", "walks", "walked"). The same principal applies to ngrams > 1: c("teenager is", "teenagers are"). The first word in an ngram sequence should be from the same root. So the function would fail to process c("teenager is", "child is"). The function will combine the counts of all forms in the returned data frame.
+
+The function can also return counts summed and normalized by year or by decade using the by argument: by="year" or by="decade").
+
+```{r ngram_function, echo=FALSE}
+google_ngram <- function(word_forms, variety=c("eng", "gb", "us", "fiction"), by=c("year", "decade")){
+  n <- lapply(word_forms, function(x) stringr::str_count(x, "\\w+"))
+  n <- unique(n)
+  if (length(n) > 1)  stop ("Check spelling. Word forms should be lemmas of the same word (e.g. 'teenager' and 'teenagers' or 'walk' , 'walks' and 'walked'")
+  gram <- lapply(word_forms, function(x) substring(x, 1, n))
+  gram <- tolower(unique(gram))
+  if (length(gram) > 1)  stop ("Check spelling. Word forms should be lemmas of the same word (e.g. 'teenager' and 'teenagers' or 'walk' , 'walks' and 'walked'")
+  
+  if(variety == "eng") repo <- paste0("http://storage.googleapis.com/books/ngrams/books/googlebooks-eng-all-", n, "gram-20120701-", gram, ".gz")
+  if(variety != "eng") repo <- paste0("http://storage.googleapis.com/books/ngrams/books/googlebooks-eng-", variety, "-all-", n, "gram-20120701-", gram, ".gz")
+  
+  all_grams <- suppressWarnings(readr::read_tsv(repo, col_names = FALSE, quote = ""))
+  colnames(all_grams) <- c("token", "year", "token_count", "pages")
+
+  if(variety == "eng") repo_total <-("http://storage.googleapis.com/books/ngrams/books/googlebooks-eng-all-totalcounts-20120701.txt")
+  if(variety != "eng") repo_total <-paste0("http://storage.googleapis.com/books/ngrams/books/googlebooks-eng-", variety, "-all-totalcounts-20120701.txt")
+  total_counts <- suppressWarnings(read.csv(repo_total, header = FALSE, sep = "\t", quote = ""))
+
+  total_counts <- as.data.frame(t(total_counts))
+  total_counts <- data.frame(V1 = (total_counts[!is.na(total_counts),]))
+  total_counts <- data.frame(do.call("rbind", strsplit(as.character(total_counts$V1), "," ,fixed = TRUE)))
+  colnames(total_counts) <- c("year", "total_count", "page_count", "volume_count")
+  total_counts$total_count <- as.numeric(as.character(total_counts$total_count))
+  total_counts$decade <- gsub("\\d$", "0", total_counts$year)
+  if (by == "year") total_counts <- aggregate(total_count ~ year, total_counts, sum)
+  if (by == "decade") total_counts <- aggregate(total_count ~ decade, total_counts, sum)
+  
+  grep_words <- paste0("^", word_forms, "$", collapse = "|")
+  all_tokens <- subset(all_grams, grepl(grep_words, all_grams$token, ignore.case=TRUE))
+  all_tokens$token <- tolower(all_tokens$token)
+  sum_tokens <- aggregate(token_count ~ year, all_tokens, sum)
+  sum_tokens$decade <- gsub("\\d$", "0", sum_tokens$year)
+  if (by == "decade") sum_tokens <- aggregate(token_count ~ decade, sum_tokens, sum)
+  if (by == "year") sum_tokens <- merge(sum_tokens, y = total_counts[,c(1:2)], by = "year")
+  if (by == "decade") sum_tokens <- merge(sum_tokens, y = total_counts[,c(1:2)], by = "decade")
+  counts_norm <- mapply(function(x,y) (x/y)*1000000, sum_tokens$token_count, sum_tokens$total_count)
+  counts_norm <- round(counts_norm, 2)
+  sum_tokens$counts_permil <- counts_norm
+  return(sum_tokens)
+}
+
+```
+
+## Ngram Plotting
+
+Here are also some handy functions for plotting. They are simply wrappers for ggplot formatting.
+
+```{r ngram_plots, echo=FALSE}
+plot_decade <- function(ngram_df, start=1800, end=2000) {
+  ngram_df$decade <- as.numeric(ngram_df$decade)
+  ngram_df <- ngram_df[ which(ngram_df$decade >= start & ngram_df$decade <= end), ]
+  ggplot(ngram_df, aes(x=decade, y=counts_permil)) +
+  geom_bar(stat = "identity") +
+  labs(x="decade", y = "frequency (per million words)")+ 
+  theme(panel.grid.minor.x=element_blank(),
+         panel.grid.major.x=element_blank()) +
+  theme(panel.grid.minor.y =   element_blank(),
+        panel.grid.major.y =   element_line(colour = "gray",size=0.25)) +
+  theme(rect = element_blank()) +
+  theme(legend.title=element_blank()) +
+  theme(axis.title = element_text(family = "Arial", color="#666666", face="bold", size=10))
+}
+
+plot_year <- function(ngram_df, start=1800, end=2000) {
+  ngram_df$year <- as.numeric(ngram_df$year)
+  ngram_df <- ngram_df[ which(ngram_df$year >= start & ngram_df$year <= end), ]
+  ggplot(ngram_df, aes(x=year, y=counts_permil)) +
+    geom_point(size = .5) +
+    geom_smooth(method = "gam", formula = y ~ s(x, bs = "cs"), size=.25) +
+    labs(x="year", y = "frequency (per million words)")+ 
+    theme(panel.grid.minor.x=element_blank(),
+          panel.grid.major.x=element_blank()) +
+    theme(panel.grid.minor.y =   element_blank(),
+          panel.grid.major.y =   element_line(colour = "gray",size=0.25)) +
+    theme(rect = element_blank()) +
+    theme(legend.title=element_blank()) +
+    theme(axis.title = element_text(family = "Arial", color="#666666", face="bold", size=10))
+}
+```
+
+Running the functions is straightforward, but remember that it can take a couple minutes if your are loading one of the larger Google Books data tables. Here we return counts of "xray" by year from the data tables for US English and plot them.
+
+```{r xray_year}
+xray_year <- google_ngram(word_forms = "xray", variety = "us", by = "year")
+plot_year(xray_year)
+```
+
+Here we return counts of "xray" and "xrays" by decade from the data tables for British English and plot them, truncating our plot for the 20th century.
+
+```{r xray_decade}
+xray_decade <- google_ngram(word_forms = c("xray", "xrays"), variety = "gb", by = "decade")
+plot_decade(xray_decade, start = 1900, end = 2000)
+```
+
+
