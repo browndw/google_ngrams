@@ -4,8 +4,10 @@ import pandas as pd
 import requests
 from io import StringIO
 
+
 def google_ngram(word_forms, variety=["eng", "gb", "us", "fiction"], by=["year", "decade"]):
-    word_forms = [re.sub(r'([a-zA-Z0-9])-([a-zA-Z0-9])', r'\1 - \2', wf) for wf in word_forms]
+    word_forms = [re.sub(r'([a-zA-Z0-9])-([a-zA-Z0-9])',
+                         r'\1 - \2', wf) for wf in word_forms]
     word_forms = [wf.strip() for wf in word_forms]
     n = [len(re.findall(r'\S+', wf)) for wf in word_forms]
     n = list(set(n))
