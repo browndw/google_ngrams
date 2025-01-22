@@ -1,8 +1,8 @@
 
 import re
-import pkg_resources
 import polars as pl
 from textwrap import dedent
+from data import sources
 
 
 def google_ngram(word_forms,
@@ -58,7 +58,7 @@ def google_ngram(word_forms,
 
     gram[0] = gram[0].encode('latin-1', 'replace').decode('latin-1')
 
-    if variety[0] == "eng":
+    if variety == "eng":
         repo = f"http://storage.googleapis.com/books/ngrams/books/googlebooks-eng-all-{n[0]}gram-20120701-{gram[0]}.gz"  # noqa: E501
     else:
         repo = f"http://storage.googleapis.com/books/ngrams/books/googlebooks-eng-{variety}-all-{n[0]}gram-20120701-{gram[0]}.gz"  # noqa: E501
@@ -95,22 +95,14 @@ def google_ngram(word_forms,
         ).drop("column_4")
 
     # read totals
-    if variety[0] == "eng":
-        total_counts = pkg_resources.resource_filename(
-            'google_ngrams',
-            'data/googlebooks_eng_all_totalcounts_20120701.parquet'
-            )
-    elif variety[0] == "gb":
-        total_counts = pkg_resources.resource_filename(
-            'google_ngrams',
-            'data/googlebooks_eng_gb_all_totalcounts_20120701.parquet'
-            )
-    elif variety[0] == "us":
-        total_counts = pkg_resources.resource_filename(
-            'google_ngrams',
-            'data/googlebooks_eng_us_all_totalcounts_20120701.parquet'
-            )
-    total_counts = pl.read_parquet(total_counts)
+    if variety == "eng":
+        f_path = sources.get("eng_all")
+    elif variety == "gb":
+        f_path = sources.get("gb_all")
+    elif variety == "us":
+        f_path = sources.get("us_all")
+
+    total_counts = pl.read_parquet(f_path)
     total_counts = total_counts.cast({"Year": pl.UInt32,
                                       "Total": pl.UInt64,
                                       "Pages": pl.UInt64,
