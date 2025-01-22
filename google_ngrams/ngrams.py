@@ -1,81 +1,185 @@
 
 import re
-import pandas as pd
-import requests
-from io import StringIO
+import pkg_resources
+import polars as pl
+from textwrap import dedent
 
 
-def google_ngram(word_forms, variety=["eng", "gb", "us", "fiction"], by=["year", "decade"]):
+def google_ngram(word_forms,
+                 variety="eng",
+                 by="decade"):
+    variety_types = ["eng", "gb", "us", "fiction"]
+    if variety not in variety_types:
+        raise ValueError("""variety_types
+                         Invalid variety type. Expected one of: %s
+                         """ % variety_types)
+    by_types = ["year", "decade"]
+    if by not in by_types:
+        raise ValueError("""variety_types
+                         Invalid by type. Expected one of: %s
+                         """ % by_types)
     word_forms = [re.sub(r'([a-zA-Z0-9])-([a-zA-Z0-9])',
                          r'\1 - \2', wf) for wf in word_forms]
     word_forms = [wf.strip() for wf in word_forms]
     n = [len(re.findall(r'\S+', wf)) for wf in word_forms]
     n = list(set(n))
-    
+
     if len(n) > 1:
-        raise ValueError("Check spelling. Word forms should be lemmas of the same word (e.g. 'teenager' and 'teenagers' or 'walk' , 'walks' and 'walked'")
+        raise ValueError("""Check spelling.
+                         Word forms should be lemmas of the same word
+                         (e.g. 'teenager' and 'teenagers'
+                         or 'walk', 'walks' and 'walked'
+                         """)
     if n[0] > 5:
-        raise ValueError("Ngrams can be a maximum of 5 tokens. Hyphenated words are split and include the hyphen, so 'x-ray' would count as 3 tokens.")
-    
+        raise ValueError("""Ngrams can be a maximum of 5 tokens.
+                         Hyphenated words are split and include the hyphen,
+                         so 'x-ray' would count as 3 tokens.
+                         """)
+
     gram = [wf[:2] if n[0] > 1 else wf[:1] for wf in word_forms]
     gram = list(set([g.lower() for g in gram]))
-    
+
     if len(gram) > 1:
-        raise ValueError("Check spelling. Word forms should be lemmas of the same word (e.g. 'teenager' and 'teenagers' or 'walk' , 'walks' and 'walked'")
-    
+        raise ValueError("""Check spelling.
+                         Word forms should be lemmas of the same word
+                         (e.g. 'teenager' and 'teenagers'
+                         or 'walk', 'walks' and 'walked'
+                         """)
+
     if re.match(r'^[a-z][^a-z]', gram[0]):
         gram[0] = re.sub(r'[^a-z]', '_', gram[0])
     if re.match(r'^[0-9]', gram[0]):
         gram[0] = gram[0][:1]
     if re.match(r'^[\W]', gram[0]):
         gram[0] = "punctuation"
-    
+
     if any(re.match(r'^[ßæðøłœıƒþȥəħŋªºɣđĳɔȝⅰʊʌʔɛȡɋⅱʃɇɑⅲ]', g) for g in gram):
         gram[0] = "other"
-    
+
     gram[0] = gram[0].encode('latin-1', 'replace').decode('latin-1')
-    
+
     if variety[0] == "eng":
-        repo = f"http://storage.googleapis.com/books/ngrams/books/googlebooks-eng-all-{n[0]}gram-20120701-{gram[0]}.gz"
+        repo = f"http://storage.googleapis.com/books/ngrams/books/googlebooks-eng-all-{n[0]}gram-20120701-{gram[0]}.gz"  # noqa: E501
     else:
-        repo = f"http://storage.googleapis.com/books/ngrams/books/googlebooks-eng-{variety[0]}-all-{n[0]}gram-20120701-{gram[0]}.gz"
-    
-    print("Accessing repository. For larger ones (e.g., ngrams containing 2 or more words) this may take a few minutes. A progress bar should appear shortly...")
-    
-    word_forms = [re.sub(r'(\.|\\?|\\$|\\^|\\)|\\(|\\}|\\{|\\]|\\[|\\*)', r'\\\1', wf) for wf in word_forms]
+        repo = f"http://storage.googleapis.com/books/ngrams/books/googlebooks-eng-{variety}-all-{n[0]}gram-20120701-{gram[0]}.gz"  # noqa: E501
+
+    print(dedent(
+        """
+        Accessing repository. For larger ones
+        (e.g., ngrams containing 2 or more words).
+        This may take a few minutes. A progress bar should appear shortly...
+        """
+    ))
+
+    word_forms = [re.sub(
+        r'(\.|\?|\$|\^|\)|\(|\}|\{|\]|\[|\*)',
+        r'\\\1', wf
+        ) for wf in word_forms]
+
     grep_words = "|".join([f"^{wf}$" for wf in word_forms])
-    
-    # Read the data from the repository
-    response = requests.get(repo)
-    data = StringIO(response.content.decode('utf-8'))
-    all_grams = pd.read_csv(data, sep='\t', header=None, names=["token", "Year", "AF", "pages"])
-    all_grams = all_grams[all_grams['token'].str.contains(grep_words, case=False)]
-    
+
+    # Read the data from the google repository and format
+    df = pl.scan_csv(repo, separator='\t', has_header=False)
+    filtered_df = df.filter(
+        pl.col("column_1").str.contains(r"(?i)" + grep_words)
+        )
+    all_grams = filtered_df.collect()
+
+    all_grams = (
+        all_grams
+        .rename(
+            {"column_1": "Token",
+             "column_2": "Year",
+             "column_3": "AF"}
+             )
+        ).drop("column_4")
+
+    # read totals
     if variety[0] == "eng":
-        total_counts = ngramr_plus.googlebooks_eng_all_totalcounts_20120701
+        total_counts = pkg_resources.resource_filename(
+            'google_ngrams',
+            'data/googlebooks_eng_all_totalcounts_20120701.parquet'
+            )
     elif variety[0] == "gb":
-        total_counts = ngramr_plus.googlebooks_eng_gb_all_totalcounts_20120701
+        total_counts = pkg_resources.resource_filename(
+            'google_ngrams',
+            'data/googlebooks_eng_gb_all_totalcounts_20120701.parquet'
+            )
     elif variety[0] == "us":
-        total_counts = ngramr_plus.googlebooks_eng_us_all_totalcounts_20120701
-    
-    if by[0] == "year":
-        total_counts = total_counts.groupby('Year').sum().reset_index()
-    if by[0] == "decade":
-        total_counts['Decade'] = total_counts['Year'].str.replace(r'\d$', '0', regex=True)
-        total_counts = total_counts.groupby('Decade').sum().reset_index()
-    
-    all_grams['token'] = all_grams['token'].str.lower()
-    sum_tokens = all_grams.groupby('Year')['AF'].sum().reset_index()
-    
-    if by[0] == "decade":
-        sum_tokens['Decade'] = sum_tokens['Year'].str.replace(r'\d$', '0', regex=True)
-        sum_tokens = sum_tokens.groupby('Decade')['AF'].sum().reset_index()
-        sum_tokens = sum_tokens.merge(total_counts[['Decade', 'Total']], on='Decade')
-        sum_tokens['Decade'] = sum_tokens['Decade'].astype(int)
-    if by[0] == "year":
-        sum_tokens = sum_tokens.merge(total_counts[['Year', 'Total']], on='Year')
-    
-    counts_norm = (sum_tokens['AF'] / sum_tokens['Total']) * 1000000
-    sum_tokens['Per_10.6'] = counts_norm
-    
+        total_counts = pkg_resources.resource_filename(
+            'google_ngrams',
+            'data/googlebooks_eng_us_all_totalcounts_20120701.parquet'
+            )
+    total_counts = pl.read_parquet(total_counts)
+    total_counts = total_counts.cast({"Year": pl.UInt32,
+                                      "Total": pl.UInt64,
+                                      "Pages": pl.UInt64,
+                                      "Volumes": pl.UInt64})
+    # format totals, fill missing data, and sum
+    total_counts = total_counts.cast({
+        "Year": pl.UInt32,
+        "Total": pl.UInt64,
+        "Pages": pl.UInt64,
+        "Volumes": pl.UInt64
+        })
+
+    total_counts = (
+        total_counts
+        .with_columns(
+            pl.col("Year")
+            .cast(pl.String).str.to_datetime("%Y")
+            )
+        .sort("Year")
+        .upsample(time_column="Year", every="1y")
+        .with_columns(
+            pl.col(["Total", "Pages", "Volumes"])
+            .fill_null(strategy="zero")
+            )
+            )
+    total_counts = (
+        total_counts
+        .group_by_dynamic(
+            "Year", every="1y"
+        ).agg(pl.col("Total").sum())
+    )
+
+    # sum token totals, convert to datetime and fill in missing years
+    sum_tokens = all_grams.group_by("Year", maintain_order=True).sum()
+    sum_tokens = (
+        sum_tokens
+        .with_columns(
+            pl.col("Year")
+            .cast(pl.String).str.to_datetime("%Y")
+            )
+        .sort("Year")
+        .upsample(time_column="Year", every="1y")
+        .with_columns(
+                pl.col("AF")
+                .fill_null(strategy="zero")
+                )
+        ).drop("Token")
+    # join with totals
+    sum_tokens = sum_tokens.join(total_counts, on="Year")
+
+    if by == "decade":
+        sum_tokens = (
+            sum_tokens
+            .group_by_dynamic("Year", every="10y")
+            .agg(pl.col(["AF", "Total"]).sum())
+        )
+    # normalize RF per million tokens
+    sum_tokens = (
+        sum_tokens
+        .with_columns(
+            RF=pl.col("AF").truediv("Total").mul(1000000)
+            )
+        .with_columns(
+            pl.col("RF").fill_nan(0)
+            )
+    )
+    sum_tokens.insert_column(1, (pl.lit(word_forms)).alias("Token"))
+
+    if by == "decade":
+        sum_tokens = sum_tokens.rename({"Year": "Decade"})
+
     return sum_tokens
