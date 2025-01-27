@@ -1,5 +1,5 @@
 import numpy as np
-import pandas as pd
+import polars as pl
 
 
 def is_sequence(x, tol=np.sqrt(np.finfo(float).eps), *args):
@@ -10,87 +10,173 @@ def is_sequence(x, tol=np.sqrt(np.finfo(float).eps), *args):
     return np.diff(np.range(np.diff(x))).max() <= tol
 
 
-def vnc_clust(time,
-              values,
-              distance_measure="sd"):
-
-    if not isinstance(time, (list, np.ndarray)) or len(time) != len(set(time)):
-        raise ValueError("It appears that your time series contains gaps or is not evenly spaced.")
+def vnc_clust(time, values, distance_measure='sd'):
     if len(time) != len(values):
         raise ValueError("Your time and values vectors must be the same length.")
-    
-    input_values = np.array(values)
-    years = np.array(time)
-    input_dict = dict(zip(years, input_values))
-    
+
+    input_values = np.array(values).copy()
+    years = np.array(time).copy()
+
     data_collector = {}
-    data_collector["0"] = input_dict
+    data_collector["0"] = input_values
     position_collector = {}
     position_collector[1] = 0
     overall_distance = 0
-    number_of_steps = len(input_dict) - 1
-    
+    number_of_steps = len(input_values) - 1
+
     for i in range(1, number_of_steps + 1):
         difference_checker = []
-        unique_names = list(set(input_dict.keys()))
-        
-        for j in range(len(unique_names) - 1):
-            first_name = unique_names[j]
-            second_name = unique_names[j + 1]
-            pooled_sample = [input_dict[name] for name in [first_name, second_name] if name in input_dict]
-            
+        unique_years = np.unique(years)
+
+        for j in range(len(unique_years) - 1):
+            first_name = unique_years[j]
+            second_name = unique_years[j + 1]
+            pooled_sample = input_values[np.isin(years, [first_name,
+                                                         second_name])]
+
             if distance_measure == "sd":
-                difference_checker.append(0 if sum(pooled_sample) == 0 else np.std(pooled_sample))
-            if distance_measure == "cv":
-                difference_checker.append(0 if sum(pooled_sample) == 0 else np.std(pooled_sample) / np.mean(pooled_sample))
-        
+                difference_checker.append(0 if np.sum(pooled_sample) == 0
+                                          else np.std(pooled_sample, ddof=1))
+            elif distance_measure == "cv":
+                difference_checker.append(
+                    0 if np.sum(pooled_sample) == 0
+                    else np.std(pooled_sample, ddof=1) / np.mean(pooled_sample)
+                    )
+
         pos_to_be_merged = np.argmin(difference_checker)
-        distance = min(difference_checker)
+        distance = np.min(difference_checker)
         overall_distance += distance
-        lower_name = unique_names[pos_to_be_merged]
-        higher_name = unique_names[pos_to_be_merged + 1]
-        matches = [name for name in input_dict.keys() if name in [lower_name, higher_name]]
-        new_mean_age = round(np.mean([float(name) for name in matches]), 4)
-        position_collector[i + 1] = [name for name in input_dict.keys() if name in [lower_name, higher_name]]
-        input_dict[new_mean_age] = input_dict.pop(lower_name) + input_dict.pop(higher_name)
-        data_collector[i + 1] = input_dict.copy()
-        data_collector[i + 1]['distance'] = distance
-    
-    hc_build = pd.DataFrame({
-        'start': [min(pos) for pos in position_collector.values()],
-        'end': [max(pos) for pos in position_collector.values()]
+        lower_name = unique_years[pos_to_be_merged]
+        higher_name = unique_years[pos_to_be_merged + 1]
+
+        matches = np.isin(years, [lower_name, higher_name])
+        new_mean_age = round(np.mean(years[matches]), 4)
+        position_collector[i + 1] = np.where(matches)[0] + 1
+        years[matches] = new_mean_age
+        data_collector[str(distance)] = input_values
+
+    hc_build = pl.DataFrame({
+        'start': [min(pos) if isinstance(pos, (list, np.ndarray)) else pos for pos in position_collector.values()],
+        'end': [max(pos) if isinstance(pos, (list, np.ndarray)) else pos for pos in position_collector.values()]
     })
-    
-    idx = range(1, len(hc_build) + 1)
-    
-    y = [np.where(hc_build['start'].iloc[:i-1].values == hc_build['start'].iloc[i-1])[0] for i in idx]
-    z = [np.where(hc_build['end'].iloc[:i-1].values == hc_build['end'].iloc[i-1])[0] for i in idx]
-    
-    merge1 = [np.nanmax(np.where(x == 1)[0]) - 1 if not np.all(np.isnan(x)) else np.nan for x in y]
-    merge2 = [np.nanmax(np.where(x == 1)[0]) - 1 if not np.all(np.isnan(x)) else np.nan for x in z]
-    
-    hc_build['merge1'] = [min(m1, m2) for m1, m2 in zip(merge1, merge2)]
-    hc_build['merge2'] = [max(m1, m2) for m1, m2 in zip(merge1, merge2)]
-    hc_build['merge2'] = hc_build['merge2'].replace(-np.inf, np.nan)
-    
-    hc_build['merge1'] = np.where(hc_build['merge1'].isna() & hc_build['merge2'].isna(), -hc_build['start'], hc_build['merge1'])
-    hc_build['merge2'] = np.where(hc_build['merge2'].isna(), -hc_build['end'], hc_build['merge2'])
-    
-    to_merge = [-set(hc_build.iloc[i, 0:2]) - set(hc_build.iloc[1:i-1, 0:2].values.flatten()) for i in idx]
-    
-    hc_build['merge1'] = np.where(hc_build['merge1'].isna(), to_merge, hc_build['merge1'])
-    
-    hc_build = hc_build.iloc[1:]
-    
-    height = np.cumsum([float(name) for name in data_collector.keys() if name != "0"])
-    order = list(range(1, len(data_collector) + 1))
-    
-    m = np.array([hc_build['merge1'].values, hc_build['merge2'].values]).T
-    hc = {
-        'merge': m,
-        'height': height,
-        'order': order,
-        'labels': years
-    }
-    
+
+    idx = np.arange(len(hc_build))
+
+    y = [np.where(
+        hc_build['start'].to_numpy()[:i] == hc_build['start'].to_numpy()[i]
+        )[0] for i in idx]
+    z = [np.where(
+        hc_build['end'].to_numpy()[:i] == hc_build['end'].to_numpy()[i]
+        )[0] for i in idx]
+
+    merge1 = [y[i].max().item() if len(y[i]) else np.nan for i in range(len(y))]
+    merge2 = [z[i].max().item() if len(z[i]) else np.nan for i in range(len(z))]
+
+    hc_build = (
+        hc_build.with_columns([
+            pl.Series('merge1',
+                      [
+                          min(m1, m2) if not np.isnan(m1) and
+                          not np.isnan(m2) else np.nan for m1, m2 in zip(merge1, merge2)
+                          ]),
+            pl.Series('merge2',
+                      [
+                          max(m1, m2) for m1, m2 in zip(merge1, merge2)
+                          ])
+                      ])
+    )
+
+    hc_build = (
+        hc_build.with_columns([
+            pl.Series('merge1', [
+                min(m1, m2) if not np.isnan(m1) and
+                not np.isnan(m2) else np.nan for m1, m2 in zip(merge1, merge2)
+                ]),
+            pl.Series('merge2', [
+                max(m1, m2) for m1, m2 in zip(merge1, merge2)
+                ])
+        ])
+        )
+
+    hc_build = (
+        hc_build.with_columns([
+            pl.when(
+                pl.col('merge1').is_nan() &
+                pl.col('merge2').is_nan()
+                ).then(-pl.col('start')
+                       ).otherwise(pl.col('merge1')).alias('merge1'),
+            pl.when(
+                pl.col('merge2')
+                .is_nan()
+                ).then(-pl.col('end')
+                       ).otherwise(pl.col('merge2')).alias('merge2')
+            ])
+            )
+
+    to_merge = [-np.setdiff1d(
+        hc_build.select(
+            pl.col('start', 'end')
+            ).row(i),
+        hc_build.select(
+            pl.col('start', 'end')
+            ).slice(1, i-1).to_numpy().flatten()
+        ) for i in idx]
+
+    to_merge = [-np.setdiff1d(
+        hc_build.select(
+            pl.col('start', 'end')
+            ).row(i),
+        hc_build.select(
+            pl.col('start', 'end')
+            ).slice(1, i-1).to_numpy().flatten()
+        ) for i in idx]
+
+    to_merge = [x[0].item() if len(x) > 0 else np.nan for x in to_merge]
+
+    hc_build = (
+        hc_build
+        .with_columns([
+            pl.when(pl.col('merge1').is_nan()
+                    ).then(pl.Series(to_merge, strict=False)
+                           ).otherwise(pl.col('merge1')).alias('merge1')
+                           ])
+                    )
+
+    n = hc_build.height
+    hc_build = (hc_build
+                .with_columns(
+                    pl.when(pl.col("merge1").lt(0))
+                    .then(pl.col("merge1").mul(-1).sub(1))
+                    .otherwise(pl.col('merge1').add(n)).alias('merge1')
+                    )
+                .with_columns(
+                    pl.when(pl.col("merge2").lt(0))
+                    .then(pl.col("merge2").mul(-1).sub(1))
+                    .otherwise(pl.col('merge2').add(n)).alias('merge2')
+                    )
+                )
+
+    hc_build = (
+        hc_build
+        .with_columns(distance=np.array(list(data_collector.keys())))
+        .with_columns(pl.col("distance").cast(pl.Float64))
+        .with_columns(pl.col("distance").cum_sum().alias("distance"))
+        )
+
+    size = np.array(
+        [
+            len(x) if isinstance(x, (list, np.ndarray))
+            else 1 for x in position_collector.values()
+         ])
+
+    hc_build = (
+        hc_build
+        .with_columns(size=size)
+        .with_columns(pl.col("size").cast(pl.Float64))
+        )
+
+    hc_build = hc_build.with_row_index().filter(pl.col("index") != 0)
+
+    hc = hc_build.select("merge1", "merge2", "distance", "size").to_numpy()
+
     return hc
