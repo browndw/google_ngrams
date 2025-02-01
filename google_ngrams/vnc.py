@@ -306,6 +306,9 @@ class TimeSeries:
         dist_types = ['sd', 'cv']
         if distance not in dist_types:
             distance = "sd"
+        orientation_types = ['horizontal', 'vertical']
+        if orientation not in orientation_types:
+            orientation = "horizontal"
 
         labels_ = self.time_intervals
 
@@ -316,6 +319,10 @@ class TimeSeries:
 
         if n_periods > len(Z):
             n_periods = 1
+            periodize = False
+
+        if n_periods > 1 and n_periods <= len(Z) and periodize is not True:
+            cut_line = True
 
         if rotate_labels is True:
             rotation = 90
@@ -371,6 +378,18 @@ class TimeSeries:
                            linewidth=.5)
 
         if orientation == "horizontal" and periodize is True:
+            cluster_labels = []
+            for value in self.clusters.values():
+                if len(value) > 1:
+                    label = f"""
+                            {value[0]}-{value[len(value) - 1]}\n({len(value)})
+                            """
+                    cluster_labels.append(label)
+                else:
+                    label = label = f"""
+                                    {value[0]}\n({len(value)})
+                                    """
+                    cluster_labels.append(label)
             dendrogram(Z,
                        ax=ax,
                        labels=labels_,
@@ -388,6 +407,9 @@ class TimeSeries:
             ax.spines['right'].set_visible(False)
             ax.spines['bottom'].set_visible(False)
             ax.set_ylabel(f'Distance (in summed {distance})')
+            ax.set_xticklabels(cluster_labels,
+                               fontsize=font_size,
+                               rotation=rotation)
             plt.setp(ax.collections, linewidth=.5)
 
         if orientation == "vertical" and periodize is not True:
@@ -412,6 +434,17 @@ class TimeSeries:
                            linewidth=.5)
 
         if orientation == "vertical" and periodize is True:
+            cluster_labels = []
+            for value in self.clusters.values():
+                if len(value) > 1:
+                    label = f"""
+                            {value[0]}-{value[len(value) - 1]}\n({len(value)})
+                            """
+                    cluster_labels.append(label)
+                else:
+                    label = label = f"{value[0]}\n({len(value)})"
+                    cluster_labels.append(label)
+            cluster_labels = cluster_labels[::-1]
             dendrogram(Z,
                        ax=ax,
                        labels=labels_,
@@ -427,7 +460,10 @@ class TimeSeries:
             ax.spines['top'].set_visible(False)
             ax.spines['right'].set_visible(False)
             ax.spines['left'].set_visible(False)
-            ax.set_ylabel(f'Distance (in summed {distance})')
+            ax.set_xlabel(f'Distance (in summed {distance})')
+            ax.set_yticklabels(cluster_labels,
+                               fontsize=font_size,
+                               rotation=rotation)
             plt.setp(ax.collections, linewidth=.5)
 
         return fig
