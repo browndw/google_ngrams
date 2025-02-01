@@ -384,9 +384,7 @@ class TimeSeries:
                     label = f"{value[0]}-{value[len(value)-1]}\n({len(value)})"
                     cluster_labels.append(label)
                 else:
-                    label = label = f"""
-                                    {value[0]}\n({len(value)})
-                                    """
+                    label = label = f"{value[0]}\n({len(value)})"
                     cluster_labels.append(label)
             dendrogram(Z,
                        ax=ax,
