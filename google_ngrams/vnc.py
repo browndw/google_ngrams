@@ -381,9 +381,7 @@ class TimeSeries:
             cluster_labels = []
             for value in self.clusters.values():
                 if len(value) > 1:
-                    label = f"""
-                            {value[0]}-{value[len(value) - 1]}\n({len(value)})
-                            """
+                    label = f"{value[0]}-{value[len(value)-1]}\n({len(value)})"
                     cluster_labels.append(label)
                 else:
                     label = label = f"""
@@ -437,9 +435,7 @@ class TimeSeries:
             cluster_labels = []
             for value in self.clusters.values():
                 if len(value) > 1:
-                    label = f"""
-                            {value[0]}-{value[len(value) - 1]}\n({len(value)})
-                            """
+                    label = f"{value[0]}-{value[len(value)-1]}\n({len(value)})"
                     cluster_labels.append(label)
                 else:
                     label = label = f"{value[0]}\n({len(value)})"
