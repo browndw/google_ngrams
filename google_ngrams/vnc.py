@@ -886,7 +886,7 @@ class TimeSeries:
                                  ivl=X['ivl'],
                                  color_list=X['color_list'],
                                  mh=X['mh'],
-                                 orientation='top',
+                                 orientation='right',
                                  p=X['p'],
                                  n=X['n'],
                                  no_labels=False)
@@ -919,7 +919,7 @@ class TimeSeries:
                                  dcoords=X['dcoord'],
                                  ivl=X['ivl'],
                                  color_list=X['color_list'],
-                                 mh=X['mh'], orientation='top',
+                                 mh=X['mh'], orientation='right',
                                  p=X['p'],
                                  n=X['n'],
                                  no_labels=False,
