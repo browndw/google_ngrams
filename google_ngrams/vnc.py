@@ -2,7 +2,7 @@ import numpy as np
 import polars as pl
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
-from scipy.cluster.hierarchy import dendrogram, fcluster
+from scipy.cluster import hierarchy as sch
 
 
 def _check_hierarchy(Z):
@@ -110,7 +110,8 @@ def _linkage_matrix(time_series,
                 not np.isnan(m2) else np.nan for m1, m2 in zip(merge1, merge2)
                 ]),
             pl.Series('merge2', [
-                max(m1, m2) for m1, m2 in zip(merge1, merge2)
+                max(m1, m2) if not np.isnan(m1)
+                else m2 for m1, m2 in zip(merge1, merge2)
                 ])
         ])
         )
@@ -159,44 +160,22 @@ def _linkage_matrix(time_series,
                         ])
                     )
 
+    hc_build = hc_build.with_row_index()
     n = hc_build.height
+
     hc_build = (hc_build
                 .with_columns(
                     pl.when(pl.col("merge1").lt(0))
                     .then(pl.col("merge1").mul(-1).sub(1))
-                    .otherwise(pl.col('merge1').add(n)).alias('merge1')
+                    .otherwise(pl.col('merge1').add(n-1)).alias('merge1')
                     )
                 .with_columns(
                     pl.when(pl.col("merge2").lt(0))
                     .then(pl.col("merge2").mul(-1).sub(1))
-                    .otherwise(pl.col('merge2').add(n)).alias('merge2')
+                    .otherwise(pl.col('merge2').add(n-1)).alias('merge2')
                     )
                 )
 
-    hc_build = (
-        hc_build
-        .with_columns(
-            pl.col("merge2").sub(pl.col("merge1")).alias("delta"))
-            )
-    hc_build = (
-        hc_build
-        .with_row_index()
-        .with_columns(
-            pl.when(
-                pl.col("merge2").ge(pl.col("index").add(n - 1))
-                ).then(pl.col("index").add(n - 1).sub(1).alias("merge2")
-                       ).otherwise(pl.col("merge2"))
-                )
-                )
-    hc_build = (
-        hc_build
-        .with_columns(
-            pl.when(
-                pl.col("merge1").gt(n - 1)
-                ).then(pl.col("merge2").sub(pl.col("delta")).alias("merge1")
-                       ).otherwise(pl.col("merge1"))
-            )
-            )
     hc_build = (
         hc_build
         .with_columns(distance=np.array(list(data_collector.keys())))
@@ -224,22 +203,6 @@ def _linkage_matrix(time_series,
         )
 
     hc_build = hc_build.filter(pl.col("index") != 0)
-
-    merge_cols = ["merge1", "merge2"]
-
-    hc_build = (
-        hc_build.with_columns(
-            pl.when(
-                pl.col("size").eq(2)
-            )
-            .then(pl.struct(
-                merge1="merge2",
-                merge2="merge1"
-            ))
-            .otherwise(pl.struct(merge_cols))
-            .struct.field(merge_cols)
-        )
-    )
 
     hc = hc_build.select("merge1", "merge2", "distance", "size").to_numpy()
     return hc
@@ -289,6 +252,73 @@ def _update_centers(df, left_matches, right_matches):
         )
     )
     return df
+
+
+def _get_cluster_labels(clusters, labels):
+
+    clusters_df = pl.from_numpy(clusters)
+
+    cluster_labels = (
+        clusters_df
+        .with_columns(
+            label=labels)
+        .filter((pl.col("index") == pl.col("cluster_min")) |
+                (pl.col("index") == pl.col("cluster_max")))
+        .group_by('cluster')
+        .agg([
+            pl.when(
+                pl.col("cluster_min") == pl.col("index")
+                ).then(pl.col("label")).alias("start"),
+            pl.when(
+                pl.col("cluster_max") == pl.col("index")
+                ).then(pl.col("label")).alias("end"), pl.first("size")
+                ])
+        .with_columns(
+            pl.when(
+                pl.col("end").list.len() < 2
+                )
+            .then(None).otherwise(pl.col("end")).alias("end")
+            )
+        .with_columns(
+            label=pl.concat_str([
+                pl.col('start').list.first(), pl.lit('-'),
+                pl.col('end').list.last()],
+                ignore_nulls=True)
+                )
+        .with_columns(
+            pl.col("label").str.strip_chars("-").alias("label")
+            )
+        .with_columns(
+            pl.concat_str([
+                pl.col("label"), pl.lit('\n('),
+                pl.col('size').cast(pl.Utf8),
+                pl.lit(')')
+                ])
+                )
+        .sort("start"))
+
+    cluster_labels = cluster_labels.sort(
+        "cluster"
+        ).get_column("label").to_list()
+
+    return cluster_labels
+
+
+def _get_cluster_summary(clusters, labels):
+    p = np.max(clusters['cluster']).item() + 1
+    clusters_df = pl.from_numpy(clusters)
+
+    clusters_df = clusters_df.with_columns(label=labels).with_columns(
+        cluster_seq=pl.col("cluster").rle_id()
+    )
+    cluster_summary = {}
+    for i in range(p):
+        elements = clusters_df.filter(
+            pl.col('cluster_seq') == i
+            )['label'].to_list()
+        cluster_summary[f"Period {i+1}"] = elements
+
+    return cluster_summary
 
 
 def _reorder_leaves(R):
@@ -349,7 +379,7 @@ def _reorder_leaves(R):
                         pl.col("idx_1").is_not_null() &
                         pl.col("idx_2").is_null()
                         ).then(pl.col("idx_1").add(1)
-                                ).otherwise(pl.col("idx_1"))
+                               ).otherwise(pl.col("idx_1"))
                 )
                 ).drop("n_leaves")
 
@@ -370,11 +400,12 @@ def _reorder_leaves(R):
                 .with_columns(leaf_idx=pl.col("ivl_1").forward_fill())
                 .with_columns(
                     pl.col("leaf_idx").shift(-1).alias("next_idx")
-                ).with_columns(
+                    )
+                .with_columns(
                     pl.when(
                         pl.col("next_idx").ne(pl.col("leaf_idx"))
                         ).then(pl.col("next_idx")
-                                ).otherwise(None).backward_fill()
+                               ).otherwise(None).backward_fill()
                     )
                 .with_columns(
                     pl.col("leaf_idx").sub(pl.col("idx_1"))
@@ -423,8 +454,8 @@ def _reorder_leaves(R):
         right_matches.append(match)
 
     # calculate how much spans need to be shifted
-    # along the x-axis by iteratvily updating the 
-    # centers from the bottom to the top 
+    # along the x-axis by iteratvily updating the
+    # centers from the bottom to the top
     df_list = [coord_df]
 
     for i in range(1, len(right_matches)):
@@ -444,35 +475,43 @@ def _reorder_leaves(R):
     coord_df = (
         coord_df
         .with_columns(
-                    pl.when(
-                        (pl.col("icoord_3") != pl.col("centers_right")) &
-                        pl.col("centers_right").is_not_nan()
-                        ).then(pl.col("centers_right")
-                                ).otherwise(pl.col("icoord_3")).alias("icoord_3")
+            pl.when(
+                (pl.col("icoord_3") != pl.col("centers_right")) &
+                pl.col("centers_right").is_not_nan()
+                )
+            .then(
+                pl.col("centers_right")
+                )
+            .otherwise(pl.col("icoord_3")).alias("icoord_3")
                 )
         .with_columns(
-                    pl.when((pl.col("icoord_2") != pl.col("centers_left")) &
-                            pl.col("centers_left").is_not_nan()
-                            ).then(pl.col("centers_left")
-                                    ).otherwise(pl.col("icoord_2")
-                                                ).alias("icoord_2")
+            pl.when(
+                (pl.col("icoord_2") != pl.col("centers_left")) &
+                pl.col("centers_left").is_not_nan()
+                )
+            .then(pl.col("centers_left")
+                  )
+            .otherwise(pl.col("icoord_2"))
+            .alias("icoord_2")
                 )
         .with_columns(
-                    pl.when(
-                        (pl.col("icoord_4") != pl.col("centers_right"))
-                        & pl.col("centers_right").is_not_nan()
-                        ).then(pl.col("centers_right")
-                                ).otherwise(pl.col("icoord_4")
-                                            ).alias("icoord_4")
+            pl.when(
+                (pl.col("icoord_4") != pl.col("centers_right")) &
+                pl.col("centers_right").is_not_nan()
+                )
+            .then(pl.col("centers_right"))
+            .otherwise(pl.col("icoord_4"))
+            .alias("icoord_4")
                 )
         .with_columns(
             pl.when(
                 (pl.col("icoord_1") != pl.col("centers_left")) &
                 pl.col("centers_left").is_not_nan()
-                ).then(pl.col("centers_left")
-                        ).otherwise(pl.col("icoord_1")
-                                    ).alias("icoord_1")
-                        )
+                )
+            .then(pl.col("centers_left"))
+            .otherwise(pl.col("icoord_1"))
+            .alias("icoord_1")
+            )
             )
 
     # select columns needed for the updated dendrogram dictionary
@@ -483,10 +522,13 @@ def _reorder_leaves(R):
                 .alias('icoord')
                 )
         .with_columns(
-                pl.concat_list(pl.selectors.starts_with("dcoord_")).alias('dcoord')
+                pl.concat_list(
+                    pl.selectors.starts_with("dcoord_")
+                    ).alias('dcoord')
                 )
         .with_columns(
-                pl.concat_list(pl.selectors.starts_with("ivl_")).alias('ivl')
+                pl.concat_list(
+                    pl.selectors.starts_with("ivl_")).alias('ivl')
                 ).select("icoord", "dcoord", "ivl")
             )
 
@@ -497,9 +539,9 @@ def _reorder_leaves(R):
 
     # format the final dictionary
     X = {"icoord": X.get_column("icoord").to_list(),
-            "dcoord": X.get_column("dcoord").to_list(),
-            "ivl": ivl,
-            "color_list": color_list}
+         "dcoord": X.get_column("dcoord").to_list(),
+         "ivl": ivl,
+         "color_list": color_list}
 
     return X
 
@@ -532,7 +574,7 @@ def _vnc_dendrogram(Z,
 
     if orientation not in ["top", "left", "bottom", "right"]:
         raise ValueError("orientation must be one of 'top', 'left', "
-                            "'bottom', or 'right'")
+                         "'bottom', or 'right'")
 
     if labels is not None:
         try:
@@ -545,18 +587,26 @@ def _vnc_dendrogram(Z,
     sch.is_valid_linkage(Z, throw=True, name='Z')
     Zs = Z.shape
     n = Zs[0] + 1
+
     if isinstance(p, (int, float)):
         p = int(p)
     else:
         raise TypeError('The second argument must be a number')
 
+    if p > n or p == 0:
+        p = n
+
+    dist = [x[2].item() for x in Z]
+    if p > 1 and p < n:
+        dist_threshold = np.mean(
+            [dist[len(dist)-p+1], dist[len(dist)-p]]
+        )
+    else:
+        dist_threshold = None
+
     if truncate_mode not in ('lastp', 'mtica', 'level', 'none', None):
         # 'mtica' is kept working for backwards compat.
         raise ValueError('Invalid truncation mode.')
-
-    if truncate_mode == 'lastp':
-        if p > n or p == 0:
-            p = n
 
     if truncate_mode == 'mtica':
         # 'mtica' is an alias
@@ -579,15 +629,15 @@ def _vnc_dendrogram(Z,
     ivl = []  # list of leaves
 
     if color_threshold is None or (isinstance(color_threshold, str) and
-                                    color_threshold == 'default'):
+                                   color_threshold == 'default'):
         color_threshold = xp.max(Z[:, 2]) * 0.7
 
     R = {'icoord': icoord_list, 'dcoord': dcoord_list, 'ivl': ivl,
-            'leaves': lvs, 'color_list': color_list}
+         'leaves': lvs, 'color_list': color_list}
 
     # Empty list will be filled in _dendrogram_calculate_info
     contraction_marks = [] if show_contracted else None
-    clusters = [] if truncate_mode is not None else None
+    clusters = [] if p > 1 else None
 
     sch._dendrogram_calculate_info(
         Z=Z, p=p,
@@ -616,34 +666,54 @@ def _vnc_dendrogram(Z,
 
     if not no_plot:
         mh = xp.max(Z[:, 2])
-        sch._plot_dendrogram(icoord_list, dcoord_list, ivl, p, n, mh, orientation,
-                            no_labels, color_list,
-                            leaf_font_size=leaf_font_size,
-                            leaf_rotation=leaf_rotation,
-                            contraction_marks=contraction_marks,
-                            ax=ax,
-                            above_threshold_color=above_threshold_color)
+        sch._plot_dendrogram(icoord_list,
+                             dcoord_list,
+                             ivl,
+                             p,
+                             n,
+                             mh,
+                             orientation,
+                             no_labels,
+                             color_list,
+                             leaf_font_size=leaf_font_size,
+                             leaf_rotation=leaf_rotation,
+                             contraction_marks=contraction_marks,
+                             ax=ax,
+                             above_threshold_color=above_threshold_color)
 
     R["leaves_color_list"] = sch._get_leaves_color_list(R)
 
     if truncate_mode is None:
         R = _reorder_leaves(R)
+        if p > 1:
+            clusters_assignment = sch.fcluster(Z, p, criterion='maxclust') - 1
+            df_clst = pl.DataFrame({'cluster': clusters_assignment}
+                                   ).with_row_index().sort("index")
+            df_clst = df_clst.with_columns(
+                cluster_min=pl.col("index").min().over(pl.col("cluster"))
+                ).with_columns(
+                size=pl.col("index").count().over(pl.col("cluster"))
+                ).with_columns(
+                cluster_max=pl.col("index").max().over(pl.col("cluster"))
+                )
+            clusters = df_clst.to_numpy(structured=True)
+            cluster_labels = _get_cluster_labels(clusters, labels)
+            cluster_summary = _get_cluster_summary(clusters, labels)
 
     if truncate_mode == 'lastp':
         R2 = sch.dendrogram(Z, no_plot=True)
         clusters = R['ivl']
         clusters_assignment = []
         for i in range(len(clusters)):
-            if clusters[i].startswith("("):
+            if isinstance(clusters[i], str) and clusters[i].startswith("("):
                 n = clusters[i].removeprefix("(").removesuffix(")")
                 n = int(n)
                 clusters_assignment.append([i] * n)
             else:
                 clusters_assignment.append([i])
         clusters_assignment = [x for xs in clusters_assignment for x in xs]
-        df_clst = pl.DataFrame(
-            {'index': R2["leaves"], 'cluster': clusters_assignment}
-            ).sort("index")
+        df_clst = pl.DataFrame({'index': R2["leaves"],
+                                'cluster': clusters_assignment}).sort("index")
         df_clst = df_clst.with_columns(
             cluster_min=pl.col("index").min().over(pl.col("cluster"))
             ).with_columns(
@@ -652,12 +722,18 @@ def _vnc_dendrogram(Z,
             cluster_max=pl.col("index").max().over(pl.col("cluster"))
             )
         clusters = df_clst.to_numpy(structured=True)
+        cluster_labels = _get_cluster_labels(clusters, labels)
+        cluster_summary = _get_cluster_summary(clusters, labels)
 
     mh = xp.max(Z[:, 2])
     R['n'] = n
     R['mh'] = mh
     R['p'] = p
+    R['labels'] = labels
     R['clusters'] = clusters
+    R['cluster_labels'] = cluster_labels
+    R['cluster_summary'] = cluster_summary
+    R['dist_threshold'] = dist_threshold
     R["contraction_marks"] = contraction_marks
 
     return R
@@ -717,7 +793,6 @@ class TimeSeries:
                     font_size=10,
                     distance="sd",
                     orientation="horizontal",
-                    rotate_labels=False,
                     cut_line=False,
                     periodize=False) -> Figure:
 
@@ -727,8 +802,6 @@ class TimeSeries:
         orientation_types = ['horizontal', 'vertical']
         if orientation not in orientation_types:
             orientation = "horizontal"
-
-        labels_ = self.time_intervals
 
         if distance == "cv":
             Z = self.Z_cv
@@ -742,140 +815,123 @@ class TimeSeries:
         if n_periods > 1 and n_periods <= len(Z) and periodize is not True:
             cut_line = True
 
-        if rotate_labels is True:
-            rotation = 90
-        else:
-            rotation = 0
-
         fig, ax = plt.subplots(figsize=(width, height), dpi=dpi)
-
-        # assign leaves to clusters
-        clusters_assignment = fcluster(Z, n_periods, criterion='maxclust')
-        clusters_assignment = {
-            str(labels_[i]): clusters_assignment[i].item()
-            for i in range(len(clusters_assignment))
-            }
-        clusters = {}
-        for key, value in clusters_assignment.items():
-            if value not in clusters:
-                clusters[value] = []
-            clusters[value].append(key)
-        self.clusters = {
-            f"Cluster {i + 1}": list(clusters.values())[i]
-            for i in range(len(list(clusters.values())))
-            }
-
-        # set distance threshold to mean between heights
-        if n_periods > 1:
-            dist_ = [x[2].item() for x in Z]
-            dist_thr = np.mean(
-                [dist_[len(dist_)-n_periods+1], dist_[len(dist_)-n_periods]]
-                )
 
         # Plot the corresponding dendrogram
         if orientation == "horizontal" and periodize is not True:
-            dendrogram(Z,
-                       ax=ax,
-                       labels=labels_,
-                       distance_sort="descending",
-                       leaf_font_size=font_size,
-                       leaf_rotation=rotation,
-                       color_threshold=0,
-                       above_threshold_color='k')
+            X = _vnc_dendrogram(Z,
+                                p=n_periods,
+                                labels=self.time_intervals)
+
+            sch._plot_dendrogram(icoords=X['icoord'],
+                                 dcoords=X['dcoord'],
+                                 ivl=X['ivl'],
+                                 color_list=X['color_list'],
+                                 mh=X['mh'],
+                                 orientation='top',
+                                 p=X['p'],
+                                 n=X['n'],
+                                 no_labels=False)
+
             ax.spines['top'].set_visible(False)
             ax.spines['right'].set_visible(False)
             ax.spines['bottom'].set_visible(False)
             ax.set_ylabel(f'Distance (in summed {distance})')
+            ax.set_xticklabels(X['labels'],
+                               fontsize=font_size,
+                               rotation=90)
             plt.setp(ax.collections, linewidth=.5)
 
-            if cut_line and n_periods > 1:
-                ax.axhline(y=dist_thr,
+            if cut_line and X['dist_threshold'] is not None:
+                ax.axhline(y=X['dist_threshold'],
                            color='r',
                            alpha=0.7,
                            linestyle='--',
                            linewidth=.5)
 
         if orientation == "horizontal" and periodize is True:
-            cluster_labels = []
-            for value in self.clusters.values():
-                if len(value) > 1:
-                    label = f"{value[0]}-{value[len(value)-1]}\n({len(value)})"
-                    cluster_labels.append(label)
-                else:
-                    label = label = f"{value[0]}\n({len(value)})"
-                    cluster_labels.append(label)
-            dendrogram(Z,
-                       ax=ax,
-                       labels=labels_,
-                       distance_sort="descending",
-                       leaf_font_size=font_size,
-                       leaf_rotation=rotation,
-                       truncate_mode='lastp',
-                       p=n_periods,
-                       get_leaves=True,
-                       show_leaf_counts=True,
-                       show_contracted=True,
-                       color_threshold=0,
-                       above_threshold_color='k')
+            X = _vnc_dendrogram(Z,
+                                truncate_mode="lastp",
+                                p=n_periods,
+                                show_contracted=True,
+                                labels=self.time_intervals)
+            sch._plot_dendrogram(icoords=X['icoord'],
+                                 dcoords=X['dcoord'],
+                                 ivl=X['ivl'],
+                                 color_list=X['color_list'],
+                                 mh=X['mh'], orientation='top',
+                                 p=X['p'],
+                                 n=X['n'],
+                                 no_labels=False,
+                                 contraction_marks=X['contraction_marks'])
+
             ax.spines['top'].set_visible(False)
             ax.spines['right'].set_visible(False)
             ax.spines['bottom'].set_visible(False)
             ax.set_ylabel(f'Distance (in summed {distance})')
-            ax.set_xticklabels(cluster_labels,
+            ax.set_xticklabels(X['cluster_labels'],
                                fontsize=font_size,
-                               rotation=rotation)
+                               rotation=90)
             plt.setp(ax.collections, linewidth=.5)
 
         if orientation == "vertical" and periodize is not True:
-            dendrogram(Z,
-                       ax=ax,
-                       labels=labels_,
-                       leaf_font_size=font_size,
-                       orientation="right",
-                       color_threshold=0,
-                       above_threshold_color='k')
+            X = _vnc_dendrogram(Z,
+                                p=n_periods,
+                                labels=self.time_intervals)
+
+            sch._plot_dendrogram(icoords=X['icoord'],
+                                 dcoords=X['dcoord'],
+                                 ivl=X['ivl'],
+                                 color_list=X['color_list'],
+                                 mh=X['mh'],
+                                 orientation='top',
+                                 p=X['p'],
+                                 n=X['n'],
+                                 no_labels=False)
+
             ax.spines['top'].set_visible(False)
             ax.spines['right'].set_visible(False)
             ax.spines['left'].set_visible(False)
-            ax.set_xlabel('Distance (in summed sd)')
+            ax.set_xlabel(f'Distance (in summed {distance})')
+            ax.set_yticklabels(X['labels'],
+                               fontsize=font_size,
+                               rotation=0)
+            ymin, ymax = ax.get_ylim()
+            ax.set_ylim(ymax, ymin)
             plt.setp(ax.collections, linewidth=.5)
 
-            if cut_line and n_periods > 1:
-                ax.axvline(x=dist_thr,
+            if cut_line and X['dist_threshold'] is not None:
+                ax.axvline(x=X['dist_threshold'],
                            color='r',
                            alpha=0.7,
                            linestyle='--',
                            linewidth=.5)
 
         if orientation == "vertical" and periodize is True:
-            cluster_labels = []
-            for value in self.clusters.values():
-                if len(value) > 1:
-                    label = f"{value[0]}-{value[len(value)-1]}\n({len(value)})"
-                    cluster_labels.append(label)
-                else:
-                    label = label = f"{value[0]}\n({len(value)})"
-                    cluster_labels.append(label)
-            cluster_labels = cluster_labels[::-1]
-            dendrogram(Z,
-                       ax=ax,
-                       labels=labels_,
-                       leaf_font_size=font_size,
-                       orientation="right",
-                       truncate_mode='lastp',
-                       p=n_periods,
-                       get_leaves=True,
-                       show_leaf_counts=True,
-                       show_contracted=True,
-                       color_threshold=0,
-                       above_threshold_color='k')
+            X = _vnc_dendrogram(Z,
+                                truncate_mode="lastp",
+                                p=n_periods,
+                                show_contracted=True,
+                                labels=self.time_intervals)
+            sch._plot_dendrogram(icoords=X['icoord'],
+                                 dcoords=X['dcoord'],
+                                 ivl=X['ivl'],
+                                 color_list=X['color_list'],
+                                 mh=X['mh'], orientation='top',
+                                 p=X['p'],
+                                 n=X['n'],
+                                 no_labels=False,
+                                 contraction_marks=X['contraction_marks'])
+
             ax.spines['top'].set_visible(False)
             ax.spines['right'].set_visible(False)
             ax.spines['left'].set_visible(False)
             ax.set_xlabel(f'Distance (in summed {distance})')
-            ax.set_yticklabels(cluster_labels,
+            ax.set_yticklabels(X['cluster_labels'],
                                fontsize=font_size,
-                               rotation=rotation)
+                               rotation=0)
+            ymin, ymax = ax.get_ylim()
+            ax.set_ylim(ymax, ymin)
             plt.setp(ax.collections, linewidth=.5)
 
         return fig
