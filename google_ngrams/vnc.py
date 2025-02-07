@@ -638,6 +638,8 @@ def _vnc_dendrogram(Z,
     # Empty list will be filled in _dendrogram_calculate_info
     contraction_marks = [] if show_contracted else None
     clusters = [] if p > 1 else None
+    cluster_labels = [] if p > 1 else None
+    cluster_summary = [] if p > 1 else None
 
     sch._dendrogram_calculate_info(
         Z=Z, p=p,
