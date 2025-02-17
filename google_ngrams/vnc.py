@@ -196,23 +196,6 @@ def _linkage_matrix(time_series,
     return hc
 
 
-def _get_cluster_summary(clusters, labels):
-    p = np.max(clusters['cluster']).item() + 1
-    clusters_df = pl.from_numpy(clusters)
-
-    clusters_df = clusters_df.with_columns(label=labels).with_columns(
-        cluster_seq=pl.col("cluster").rle_id()
-    )
-    cluster_summary = {}
-    for i in range(p):
-        elements = clusters_df.filter(
-            pl.col('cluster_seq') == i
-            )['label'].to_list()
-        cluster_summary[f"Period {i+1}"] = elements
-
-    return cluster_summary
-
-
 def _contract_linkage_matrix(Z: np.ndarray,
                              p=4):
     """
@@ -919,6 +902,8 @@ class TimeSeries:
                                     p=n_periods,
                                     labels=self.time_intervals)
 
+            self.clusters = X['clusters']
+
             sch._plot_dendrogram(icoords=X['icoord'],
                                  dcoords=X['dcoord'],
                                  ivl=X['ivl'],
@@ -951,6 +936,9 @@ class TimeSeries:
                                     p=n_periods,
                                     contraction_marks=True,
                                     labels=self.time_intervals)
+
+            self.clusters = X['clusters']
+
             sch._plot_dendrogram(icoords=X['icoord'],
                                  dcoords=X['dcoord'],
                                  ivl=X['ivl'],
@@ -974,6 +962,8 @@ class TimeSeries:
             X = _vnc_calculate_info(Z,
                                     p=n_periods,
                                     labels=self.time_intervals)
+
+            self.clusters = X['clusters']
 
             sch._plot_dendrogram(icoords=X['icoord'],
                                  dcoords=X['dcoord'],
@@ -1009,6 +999,9 @@ class TimeSeries:
                                     p=n_periods,
                                     contraction_marks=True,
                                     labels=self.time_intervals)
+
+            self.clusters = X['clusters']
+
             sch._plot_dendrogram(icoords=X['icoord'],
                                  dcoords=X['dcoord'],
                                  ivl=X['ivl'],
@@ -1031,3 +1024,11 @@ class TimeSeries:
             plt.setp(ax.collections, linewidth=.5)
 
         return fig
+
+    def cluster_summary(cluster_list):
+        if cluster_list is not None:
+            for i, cluster in enumerate(cluster_list, start=1):
+                for key, value in cluster.items():
+                    print(f"Cluster {i} (n={len(value)}): {[str(v) for v in value]}")  # noqa: E501
+        else:
+            print("No clusters to summarize.")
