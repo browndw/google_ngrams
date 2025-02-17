@@ -34,6 +34,9 @@ You can install the released version of google_ngrams from `PyPI <https://pypi.o
 Usage
 -----
 
+Fetching n-gram data
+^^^^^^^^^^^^^^^^^^^^
+
 To use the google_ngrams package, import :code:`google_ngram` to fetch data and :code:`TimeSeries`.
 
 .. code-block:: import
@@ -56,11 +59,20 @@ Alternatively, the following would return counts of the combined forms *xray* an
 
 The function returns a polars DataFrame with either a time interval column (either :code:`Year` or :code:`Decade`) and columns for :code:`Token`, :code:`AF` (absolute frequency) and :code:`RF` (relative frequency).
 
+The returned DataFrame, then, can be manipulated using the polars API:
+
 .. code-block:: filtering
 
     import polars as pl
     
     xray_filtered = xray_decade.filter(pl.col("Decade" )>= 1900)
+
+
+Analyzing time series data
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+To analyze the data, 
+
 
 License
 -------
