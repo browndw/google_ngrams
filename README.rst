@@ -78,7 +78,15 @@ To analyze the data, use :code:`TimeSeries`, specifying a column of time interva
 
     xray_ts = TimeSeries(xray_filtered, time_col="Decade", values_col="RF")
     
-    
+VNC dendrograms can then be plotted with a variety of options:
+
+.. code-block:: dendrogram
+
+    xray_ts.timeviz_vnc()
+
+For additional information, consult the `documentation <https://browndw.github.io/google_ngrams/>`_.
+
+
 License
 -------
 
