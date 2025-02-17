@@ -72,7 +72,7 @@ The returned DataFrame, then, can be manipulated using the polars API:
 Analyzing time series data
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-To analyze the data, use :code`TimeSeries`, specifying a column of time intervals and a column of relative frequencies:
+To analyze the data, use :code:`TimeSeries`, specifying a column of time intervals and a column of relative frequencies:
 
 .. code-block:: time_series
 
