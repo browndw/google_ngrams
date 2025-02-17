@@ -34,16 +34,17 @@ You can install the released version of google_ngrams from `PyPI <https://pypi.o
 Usage
 -----
 
-Fetching n-gram data
-^^^^^^^^^^^^^^^^^^^^
-
-To use the google_ngrams package, import :code:`google_ngram` to fetch data and :code:`TimeSeries`.
+To use the google_ngrams package, import :code:`google_ngram` to fetch data and :code:`TimeSeries` for analysis.
 
 .. code-block:: import
 
     from google_ngrams import google_ngram, TimeSeries 
 
-It supports different varieties of English (e.g., British, American) and allows aggregation by year or decade. Word forms (even a single word form) must be formatted as a list:
+
+Fetching n-gram data
+^^^^^^^^^^^^^^^^^^^^
+
+The :code:`google_ngram` function supports different varieties of English (e.g., British, American) and allows aggregation by year or decade. Word forms (even a single word form) must be formatted as a list:
 
 The following would return counts for the word *x-ray* in US English by year:
 
