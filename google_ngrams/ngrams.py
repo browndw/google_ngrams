@@ -2,10 +2,11 @@
 import re
 import polars as pl
 from textwrap import dedent
+from typing import List
 from .data import sources
 
 
-def google_ngram(word_forms: list,
+def google_ngram(word_forms: List[str],
                  variety="eng",
                  by="decade") -> pl.DataFrame:
     """
@@ -17,7 +18,7 @@ def google_ngram(word_forms: list,
 
     Parameters
     ----------
-    word_forms : list
+    word_forms : List
         List of word forms to search for.
     variety : str
         Variety of English ('eng', 'gb', 'us', 'fiction').

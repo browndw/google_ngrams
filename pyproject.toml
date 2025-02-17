@@ -1,0 +1,41 @@
+[project]
+name = "google_ngrams"
+description = "Fetch and analyze Google Ngram data for specified word forms."
+readme.content-type = "text/x-rst"
+readme.file = "README.rst"
+urls.Documentation = "https://browndw.github.io/google_ngrams"
+urls.Homepage = "https://github.com/browndw/pybiber"
+authors = [{ name = "David Brown", email = "dwb2@andrew.cmu.edu" }]
+maintainers = [{ name = "David Brown", email = "dwb2@andrew.cmu.edu" }]
+keywords = ["nlp", "language"]
+classifiers = [
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+requires-python = ">=3.9"
+version = "0.1.0"
+dependencies = [
+    "importlib-resources>=6.5",
+    "matplotlib>=3.5",
+    "polars>=1.17",
+    "scipy>=1.15",
+]
+
+[build-system]
+requires = ["setuptools>=45", "setuptools-scm>=6.2", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages]
+find = { namespaces = false }
+
+[tool.setuptools_scm]
+
+[tool.distutils.bdist_wheel]
+universal = 1

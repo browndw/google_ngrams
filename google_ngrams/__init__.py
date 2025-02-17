@@ -1,7 +1,7 @@
 # flake8: noqa
 
 # Set version ----
-from importlib_metadata import version as _v
+from importlib.metadata import version as _v
 
 __version__ = _v("google_ngrams")
 
@@ -11,6 +11,6 @@ del _v
 
 from .ngrams import google_ngram
 
-from .vnc import VNCAnalyzer
+from .vnc import TimeSeries
 
-__all__ = ['google_ngram', 'VNCAnalyzer']
+__all__ = ['google_ngram', 'TimeSeries']

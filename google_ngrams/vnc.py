@@ -700,6 +700,12 @@ class TimeSeries:
             The resolution of the plot.
         barwidth:
             The width of the bars.
+        fill_color:
+            The color of the bars.
+        tick_interval:
+            Interval spacing for the tick labels.
+        label_rotation:
+            Angle used to rotate tick labels.
 
         Returns
         -------
@@ -723,8 +729,10 @@ class TimeSeries:
         start_value = np.min(xx)
 
         fig, ax = plt.subplots(figsize=(width, height), dpi=dpi)
+
         ax.bar(xx, yy, color=fill_color, edgecolor='black',
                linewidth=.5, width=barwidth)
+
         # Despine
         ax.spines['right'].set_visible(False)
         ax.spines['top'].set_visible(False)
@@ -743,9 +751,10 @@ class TimeSeries:
                             dpi=150,
                             point_color='black',
                             point_size=0.5,
-                            ci='standard'):
+                            ci='standard') -> Figure:
         """
-        Generate a bar plot of token frequenices over time.
+        Generate a scatter plot of token frequenices over time
+        with a smoothed fit line and a confidence interval.
 
         Parameters
         ----------
@@ -755,8 +764,13 @@ class TimeSeries:
             The height of the plot.
         dpi:
             The resolution of the plot.
+        point_color:
+            The color of the points.
         point_size:
             The size of the points.
+        ci:
+            The confidence interval. One of "standard" (95%),
+            "strict" (97.5%) or "both".
 
         Returns
         -------
@@ -812,12 +826,13 @@ class TimeSeries:
         return fig
 
     def timeviz_screeplot(self,
-                          distance="sd",
                           width=6,
                           height=3,
                           dpi=150,
-                          point_size=0.75,):
-        """Generate a scree plot for determining clusters.
+                          point_size=0.75,
+                          distance="sd") -> Figure:
+        """
+        Generate a scree plot for determining clusters.
 
         Parameters
         ----------
@@ -827,9 +842,11 @@ class TimeSeries:
             The height of the plot.
         dpi:
             The resolution of the plot.
-        mda:
-            Whether or not non-colinear features should be
-            filter out per Biber's multi-dimensional analysis procedure.
+        point_size:
+            The size of the points.
+        distance:
+            One of 'sd' (standard deviation)
+            or 'cv' (coefficient of variation).
 
         Returns
         -------
@@ -868,13 +885,56 @@ class TimeSeries:
                     width=6,
                     height=4,
                     dpi=150,
-                    n_periods=1,
                     font_size=10,
+                    n_periods=1,
                     distance="sd",
                     orientation="horizontal",
                     cut_line=False,
-                    periodize=False) -> Figure:
+                    periodize=False,
+                    hide_labels=False) -> Figure:
+        """
+        Generate a dendrogram  using the clustering method,
+        "Variability-based Neighbor Clustering"(VNC),
+        to identify periods in the historical development
+        of P that accounts for the temporal ordering of the data.
 
+        Parameters
+        ----------
+        width:
+            The width of the plot.
+        height:
+            The height of the plot.
+        dpi:
+            The resolution of the plot.
+        font_size:
+            The font size for the labels.
+        n_periods:
+            The number of periods (or clusters).
+        distance:
+            One of 'sd' (standard deviation)
+            or 'cv' (coefficient of variation).
+        orientation:
+            The orientation of the plot,
+            either "horizontal" or "vertical".
+         cut_line:
+            Whether or not to include a cut line;
+            applies only to non-periodized plots.
+         cut_line:
+            Whether or not to include a cut line;
+            applies only to non-periodized plots.
+        periodize:
+            The dendrogram can be hard to read when the original
+            observation matrix from which the linkage is derived is
+            large. Periodization is used to condense the dendrogram.
+         hide_labels:
+            Whether or not to hide leaf labels.
+
+        Returns
+        -------
+        Figure
+            A matplotlib figure.
+
+        """
         dist_types = ['sd', 'cv']
         if distance not in dist_types:
             distance = "sd"
@@ -918,9 +978,14 @@ class TimeSeries:
             ax.spines['right'].set_visible(False)
             ax.spines['bottom'].set_visible(False)
             ax.set_ylabel(f'Distance (in summed {distance})')
-            ax.set_xticklabels(X['labels'],
-                               fontsize=font_size,
-                               rotation=90)
+
+            if hide_labels is not True:
+                ax.set_xticklabels(X['labels'],
+                                   fontsize=font_size,
+                                   rotation=90)
+            else:
+                ax.set_xticklabels([])
+
             plt.setp(ax.collections, linewidth=.5)
 
             if cut_line and X['dist_threshold'] is not None:
@@ -953,9 +1018,14 @@ class TimeSeries:
             ax.spines['right'].set_visible(False)
             ax.spines['bottom'].set_visible(False)
             ax.set_ylabel(f'Distance (in summed {distance})')
-            ax.set_xticklabels(X['cluster_labels'],
-                               fontsize=font_size,
-                               rotation=90)
+
+            if hide_labels is not True:
+                ax.set_xticklabels(X['cluster_labels'],
+                                   fontsize=font_size,
+                                   rotation=90)
+            else:
+                ax.set_xticklabels([])
+
             plt.setp(ax.collections, linewidth=.5)
 
         if orientation == "vertical" and periodize is not True:
@@ -979,9 +1049,14 @@ class TimeSeries:
             ax.spines['right'].set_visible(False)
             ax.spines['left'].set_visible(False)
             ax.set_xlabel(f'Distance (in summed {distance})')
-            ax.set_yticklabels(X['labels'],
-                               fontsize=font_size,
-                               rotation=0)
+
+            if hide_labels is not True:
+                ax.set_yticklabels(X['labels'],
+                                   fontsize=font_size,
+                                   rotation=0)
+            else:
+                ax.set_yticklabels([])
+
             ymin, ymax = ax.get_ylim()
             ax.set_ylim(ymax, ymin)
             plt.setp(ax.collections, linewidth=.5)
@@ -1016,16 +1091,30 @@ class TimeSeries:
             ax.spines['right'].set_visible(False)
             ax.spines['left'].set_visible(False)
             ax.set_xlabel(f'Distance (in summed {distance})')
-            ax.set_yticklabels(X['cluster_labels'],
-                               fontsize=font_size,
-                               rotation=0)
+
+            if hide_labels is not True:
+                ax.set_yticklabels(X['cluster_labels'],
+                                   fontsize=font_size,
+                                   rotation=0)
+            else:
+                ax.set_yticklabels([])
+
             ymin, ymax = ax.get_ylim()
             ax.set_ylim(ymax, ymin)
             plt.setp(ax.collections, linewidth=.5)
 
         return fig
 
-    def cluster_summary(cluster_list):
+    def cluster_summary(self):
+        """
+        Print a summary of cluster membership.
+
+        Returns
+        -------
+            Prints to the console.
+
+        """
+        cluster_list = self.clusters
         if cluster_list is not None:
             for i, cluster in enumerate(cluster_list, start=1):
                 for key, value in cluster.items():
