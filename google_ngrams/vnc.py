@@ -1,16 +1,10 @@
+import copy
 import numpy as np
 import polars as pl
 import matplotlib.pyplot as plt
+from textwrap import dedent
 from matplotlib.figure import Figure
 from scipy.cluster import hierarchy as sch
-
-
-def _check_hierarchy(Z):
-    n = Z.shape[0] + 1
-    for i in range(0, n - 1):
-        if Z[i, 0] >= n + i or Z[i, 1] >= n + i:
-            return True
-    return False
 
 
 def _linkage_matrix(time_series,
@@ -57,7 +51,7 @@ def _linkage_matrix(time_series,
         new_mean_age = round(np.mean(years[matches]), 4)
         position_collector[i + 1] = np.where(matches)[0] + 1
         years[matches] = new_mean_age
-        data_collector[str(distance)] = input_values
+        data_collector[f"{i}: {distance}"] = input_values
 
     hc_build = pl.DataFrame({
         'start': [
@@ -179,13 +173,7 @@ def _linkage_matrix(time_series,
     hc_build = (
         hc_build
         .with_columns(distance=np.array(list(data_collector.keys())))
-        .with_columns(pl.col("distance").cast(pl.Float64))
-        .with_columns(pl.col("distance").cum_sum().alias("distance"))
-        )
-
-    hc_build = (
-        hc_build
-        .with_columns(distance=np.array(list(data_collector.keys())))
+        .with_columns(pl.col("distance").str.replace(r"(\d+: )", ""))
         .with_columns(pl.col("distance").cast(pl.Float64))
         .with_columns(pl.col("distance").cum_sum().alias("distance"))
         )
@@ -208,102 +196,6 @@ def _linkage_matrix(time_series,
     return hc
 
 
-def _find_first_previous_match(arr, value):
-    """Finds the index of the first previous match in an array."""
-    indices = np.where(arr == value)[0]
-    if len(indices) > 0:
-        return indices[0].item()
-    else:
-        np.nan
-
-
-def _update_centers(df, left_matches, right_matches):
-    centers = (
-        df.sort("dcoord_2", descending=False)
-        .with_columns(centers=pl.mean_horizontal(["icoord_2", "icoord_3"]))
-        .select("centers").to_series().to_list()
-    )
-    centers_left = np.array(
-        [
-            centers[left_matches[i]]
-            if left_matches[i] is not None
-            else np.nan for i in range(len(left_matches))
-        ], dtype=np.float64)
-    centers_right = np.array(
-        [
-            centers[right_matches[i]]
-            if right_matches[i] is not None
-            else np.nan for i in range(len(right_matches))
-            ], dtype=np.float64)
-
-    df = (df.with_columns(
-            centers_left=centers_left
-        )
-        .with_columns(centers_right=centers_right)
-        .with_columns(
-            pl.when(pl.col("icoord_2").is_nan())
-            .then(pl.col("centers_left"))
-            .otherwise(pl.col("icoord_2")).alias("icoord_2")
-        )
-        .with_columns(
-            pl.when(pl.col("icoord_3").is_nan())
-            .then(pl.col("centers_right"))
-            .otherwise(pl.col("icoord_3")).alias("icoord_3")
-        )
-    )
-    return df
-
-
-def _get_cluster_labels(clusters, labels):
-
-    clusters_df = pl.from_numpy(clusters)
-
-    cluster_labels = (
-        clusters_df
-        .with_columns(
-            label=labels)
-        .filter((pl.col("index") == pl.col("cluster_min")) |
-                (pl.col("index") == pl.col("cluster_max")))
-        .group_by('cluster')
-        .agg([
-            pl.when(
-                pl.col("cluster_min") == pl.col("index")
-                ).then(pl.col("label")).alias("start"),
-            pl.when(
-                pl.col("cluster_max") == pl.col("index")
-                ).then(pl.col("label")).alias("end"), pl.first("size")
-                ])
-        .with_columns(
-            pl.when(
-                pl.col("end").list.len() < 2
-                )
-            .then(None).otherwise(pl.col("end")).alias("end")
-            )
-        .with_columns(
-            label=pl.concat_str([
-                pl.col('start').list.first(), pl.lit('-'),
-                pl.col('end').list.last()],
-                ignore_nulls=True)
-                )
-        .with_columns(
-            pl.col("label").str.strip_chars("-").alias("label")
-            )
-        .with_columns(
-            pl.concat_str([
-                pl.col("label"), pl.lit('\n('),
-                pl.col('size').cast(pl.Utf8),
-                pl.lit(')')
-                ])
-                )
-        .sort("start"))
-
-    cluster_labels = cluster_labels.sort(
-        "cluster"
-        ).get_column("label").to_list()
-
-    return cluster_labels
-
-
 def _get_cluster_summary(clusters, labels):
     p = np.max(clusters['cluster']).item() + 1
     clusters_df = pl.from_numpy(clusters)
@@ -321,424 +213,441 @@ def _get_cluster_summary(clusters, labels):
     return cluster_summary
 
 
-def _reorder_leaves(R):
+def _contract_linkage_matrix(Z: np.ndarray,
+                             p=4):
+    """
+    Contracts the linkage matrix by reducing the number of clusters
+    to a specified number.
 
-    # get list of leaves by index
-    ivl_list = R["leaves"]
-    color_list = R["color_list"]
+    Parameters
+    ----------
+    Z : np.ndarray
+        The linkage matrix.
+    p : int
+        The number of clusters to retain.
 
-    # place the dendrogram coordinates in a dataframe
-    coord_df = pl.DataFrame(
-        {'icoord': R['icoord'], 'dcoord': R['dcoord']}
-        ).with_row_index()
+    Returns
+    -------
+    np.ndarray
+        The contracted linkage matrix with updated cluster IDs
+        and member counts.
+    """
+    Z = Z.copy()
+    truncated_Z = Z[-(p - 1):]
 
-    # unnest the coorinates and sort in order of their placement left-to-right
-    coord_df = (coord_df
-                .with_columns(
-                    pl.col('icoord').list.to_struct(fields=[
-                        "icoord_1", "icoord_2", "icoord_3", "icoord_4"]))
-                .with_columns(
-                    pl.col('dcoord').list.to_struct(fields=[
-                        "dcoord_1", "dcoord_2", "dcoord_3", "dcoord_4"]))
-                .unnest('icoord')
-                .unnest('dcoord')
-                ).sort(pl.col("icoord_1"))
-
-    # indicate which leaves are singletons and witch are in pairs
-    coord_df = (coord_df
-                .with_columns(
-                    pl.when(
-                        dcoord_1=0, dcoord_4=0
-                        ).then(2).otherwise(None).alias("n_leaves")
-                )
-                .with_columns(
-                    pl.when(
-                        (pl.col("n_leaves").is_null() &
-                            pl.col("dcoord_1").eq(0))
-                            ).then(1).otherwise(
-                                pl.col("n_leaves")).alias("n_leaves"))
-                .with_columns(
-                    pl.when(
-                        (pl.col("n_leaves").is_null() &
-                            pl.col("dcoord_4").eq(0))).then(1).otherwise(
-                                pl.col("n_leaves")).alias("n_leaves")))
-
-    # create indices for groupings
-    coord_df = (coord_df
-                .with_columns(
-                    pl.col("n_leaves").cum_sum().sub(2).alias("idx_1")
-                )
-                .with_columns(
-                    pl.when(pl.col("n_leaves").eq(2)).then(1).alias("idx_2")
-                )
-                .with_columns(
-                    pl.col("idx_2").add(pl.col("idx_1"))
-                )
-                .with_columns(
-                    pl.when(
-                        pl.col("idx_1").is_not_null() &
-                        pl.col("idx_2").is_null()
-                        ).then(pl.col("idx_1").add(1)
-                               ).otherwise(pl.col("idx_1"))
-                )
-                ).drop("n_leaves")
-
-    coord_df = (coord_df
-                .with_columns(ivl_list=ivl_list)
-                .with_columns(
-                    ivl_1=pl.col("ivl_list").list.slice(
-                        pl.col("idx_1"), length=1).list.first().cast(pl.Int32))
-                .with_columns(
-                    ivl_2=pl.col("ivl_list").list.slice(
-                        pl.col("idx_2"), length=1).list.first().cast(pl.Int32))
-                )
-
-    # based on the indices determine how far the iccord of leaves that
-    # have icoord_1 or icoord_4 of 0 need to moved to follow
-    # the sequential order indicated by ivl integers
-    coord_df = (coord_df
-                .with_columns(leaf_idx=pl.col("ivl_1").forward_fill())
-                .with_columns(
-                    pl.col("leaf_idx").shift(-1).alias("next_idx")
-                    )
-                .with_columns(
-                    pl.when(
-                        pl.col("next_idx").ne(pl.col("leaf_idx"))
-                        ).then(pl.col("next_idx")
-                               ).otherwise(None).backward_fill()
-                    )
-                .with_columns(
-                    pl.col("leaf_idx").sub(pl.col("idx_1"))
-                    .alias("x_adjust").forward_fill()
-                    )
-                .with_columns(pl.col("x_adjust").mul(10))
-                ).drop("ivl_list")
-
-    # sort by the heights the y-axis so links are ordered
-    # bottom to top as indicated by dcoord_2
-    coord_df = (coord_df.sort("dcoord_2", descending=False)
-                .with_columns(
-                    pl.when(
-                        pl.col("dcoord_1").eq(0))
-                .then(pl.col(["icoord_1", "icoord_2"]).add(pl.col("x_adjust")))
-                .otherwise(np.nan)
-                )
-                .with_columns(
-                pl.when(
-                    pl.col("dcoord_4").eq(0))
-                .then(pl.col(["icoord_3", "icoord_4"]).add(pl.col("x_adjust")))
-                .otherwise(np.nan)
-                )
-                )
-
-    # map linkages by finding the nearest linkages left and right
-    # down the dendrogam as indicated by their shared coordinates
-    dcoord_1 = coord_df.sort(
-        "dcoord_2", descending=False)["dcoord_1"].to_numpy()
-    dcoord_2 = coord_df.sort(
-        "dcoord_2", descending=False)["dcoord_2"].to_numpy()
-
-    dcoord_3 = coord_df.sort(
-        "dcoord_2", descending=False)["dcoord_3"].to_numpy()
-    dcoord_4 = coord_df.sort(
-        "dcoord_2", descending=False)["dcoord_4"].to_numpy()
-
-    left_matches = []
-    for i in range(len(dcoord_1)):
-        match = _find_first_previous_match(dcoord_2, dcoord_1[i])
-        left_matches.append(match)
-
-    right_matches = []
-    for i in range(len(dcoord_1)):
-        match = _find_first_previous_match(dcoord_3, dcoord_4[i])
-        right_matches.append(match)
-
-    # calculate how much spans need to be shifted
-    # along the x-axis by iteratvily updating the
-    # centers from the bottom to the top
-    df_list = [coord_df]
-
-    for i in range(1, len(right_matches)):
-        df = df_list[-1]
-        df = _update_centers(df, left_matches, right_matches)
-        df_list.append(df)
-
-    # take the last iteration
-    coord_df = (
-        df_list[-1]
-        .with_columns(pl.col("icoord_2").alias("icoord_1"))
-        .with_columns(pl.col("icoord_3").alias("icoord_4"))
-        .sort("icoord_1")
+    n_points = Z.shape[0] + 1
+    clusters = [
+        dict(node_id=i, left=i, right=i, members=[i], distance=0, n_members=1)
+        for i in range(n_points)
+    ]
+    for z_i in range(Z.shape[0]):
+        row = Z[z_i]
+        left = int(row[0])
+        right = int(row[1])
+        cluster = dict(
+            node_id=z_i + n_points,
+            left=left,
+            right=right,
+            members=[],
+            distance=row[2],
+            n_members=int(row[3])
         )
+        cluster["members"].extend(copy.deepcopy(clusters[left]["members"]))
+        cluster["members"].extend(copy.deepcopy(clusters[right]["members"]))
+        cluster["members"].sort()
+        clusters.append(cluster)
 
-    # adjust centers to their final position
-    coord_df = (
-        coord_df
-        .with_columns(
-            pl.when(
-                (pl.col("icoord_3") != pl.col("centers_right")) &
-                pl.col("centers_right").is_not_nan()
-                )
-            .then(
-                pl.col("centers_right")
-                )
-            .otherwise(pl.col("icoord_3")).alias("icoord_3")
-                )
-        .with_columns(
-            pl.when(
-                (pl.col("icoord_2") != pl.col("centers_left")) &
-                pl.col("centers_left").is_not_nan()
-                )
-            .then(pl.col("centers_left")
-                  )
-            .otherwise(pl.col("icoord_2"))
-            .alias("icoord_2")
-                )
-        .with_columns(
-            pl.when(
-                (pl.col("icoord_4") != pl.col("centers_right")) &
-                pl.col("centers_right").is_not_nan()
-                )
-            .then(pl.col("centers_right"))
-            .otherwise(pl.col("icoord_4"))
-            .alias("icoord_4")
-                )
-        .with_columns(
-            pl.when(
-                (pl.col("icoord_1") != pl.col("centers_left")) &
-                pl.col("centers_left").is_not_nan()
-                )
-            .then(pl.col("centers_left"))
-            .otherwise(pl.col("icoord_1"))
-            .alias("icoord_1")
-            )
-            )
+    node_map = []
+    for i in range(truncated_Z.shape[0]):
+        node_ids = [int(truncated_Z[i, 0]), int(truncated_Z[i, 1])]
+        for cluster in clusters:
+            if cluster['node_id'] in node_ids:
+                node_map.append(cluster)
 
-    # select columns needed for the updated dendrogram dictionary
-    X = (
-        coord_df
-        .with_columns(
-                pl.concat_list(pl.selectors.starts_with("icoord_"))
-                .alias('icoord')
-                )
-        .with_columns(
-                pl.concat_list(
-                    pl.selectors.starts_with("dcoord_")
-                    ).alias('dcoord')
-                )
-        .with_columns(
-                pl.concat_list(
-                    pl.selectors.starts_with("ivl_")).alias('ivl')
-                ).select("icoord", "dcoord", "ivl")
-            )
+    filtered_node_map = []
+    superset_node_map = []
 
-    # put ivl data into list droping null values
-    ivl = [
-        x for xs in X.get_column("ivl").to_list() for x in xs if x is not None
+    for node in node_map:
+        is_superset = False
+        for other_node in node_map:
+            if (
+                node != other_node
+                    and set(
+                        node['members']
+                        ).issuperset(set(other_node['members']))
+                    ):
+                is_superset = True
+                break
+        if is_superset:
+            superset_node_map.append(node)
+        else:
+            filtered_node_map.append(node)
+
+    # Add 'truncated_id' to each dictionary in filtered_node_map
+    for idx, node in enumerate(
+        sorted(filtered_node_map, key=lambda x: x['members'][0])
+            ):
+        node['truncated_id'] = idx
+        node['n_members'] = 1
+
+    for idx, node in enumerate(
+        sorted(superset_node_map, key=lambda x: x['node_id'])
+            ):
+        node['truncated_id'] = idx + len(filtered_node_map)
+
+    # Adjust 'n_members' in superset_node_map to reflect
+    # the number of filtered_node_map['members'] sets they contain
+    for superset_node in superset_node_map:
+        count = 0
+        for filtered_node in filtered_node_map:
+            if set(
+                filtered_node['members']
+                    ).issubset(set(superset_node['members'])):
+                count += 1
+        superset_node['n_members'] = count
+
+    # Create a mapping from node_id to truncated_id and n_members
+    node_id_to_truncated_id = {
+        node['node_id']: node['truncated_id']
+        for node in filtered_node_map + superset_node_map
+    }
+    node_id_to_n_members = {
+        node['node_id']: node['n_members']
+        for node in filtered_node_map + superset_node_map
+    }
+
+    # Replace values in truncated_Z
+    for i in range(truncated_Z.shape[0]):
+        truncated_Z[i, 3] = (
+            node_id_to_n_members[int(truncated_Z[i, 0])] +
+            node_id_to_n_members[int(truncated_Z[i, 1])]
+        )
+        truncated_Z[i, 0] = node_id_to_truncated_id[int(truncated_Z[i, 0])]
+        truncated_Z[i, 1] = node_id_to_truncated_id[int(truncated_Z[i, 1])]
+
+    return truncated_Z
+
+
+def _contraction_mark_coordinates(Z: np.ndarray,
+                                  p=4):
+    """
+    Generates contraction marks for a given linkage matrix.
+
+    Parameters
+    ----------
+    Z : np.ndarray
+        The linkage matrix.
+    p : int
+        The number of clusters to retain.
+
+    Returns
+    -------
+    list
+        A sorted list of tuples where each tuple contains
+        a calculated value based on truncated_id and a distance value.
+    """
+    Z = Z.copy()
+    truncated_Z = Z[-(p-1):]
+
+    n_points = Z.shape[0] + 1
+    clusters = [dict(node_id=i,
+                     left=i,
+                     right=i,
+                     members=[i],
+                     distance=0,
+                     n_members=1) for i in range(n_points)]
+    for z_i in range(Z.shape[0]):
+        row = Z[z_i]
+        left = int(row[0])
+        right = int(row[1])
+        cluster = dict(
+            node_id=z_i + n_points,
+            left=left, right=right,
+            members=[],
+            distance=row[2],
+            n_members=int(row[3])
+            )
+        cluster["members"].extend(copy.deepcopy(clusters[left]["members"]))
+        cluster["members"].extend(copy.deepcopy(clusters[right]["members"]))
+        cluster["members"].sort()
+        clusters.append(cluster)
+
+    node_map = []
+    for i in range(truncated_Z.shape[0]):
+        node_ids = [int(truncated_Z[i, 0]), int(truncated_Z[i, 1])]
+        for cluster in clusters:
+            if cluster['node_id'] in node_ids:
+                node_map.append(cluster)
+
+    filtered_node_map = []
+    superset_node_map = []
+
+    for node in node_map:
+        is_superset = False
+        for other_node in node_map:
+            if (node != other_node
+                    and set(node['members']
+                            ).issuperset(set(other_node['members']))):
+                is_superset = True
+                break
+        if is_superset:
+            superset_node_map.append(node)
+        else:
+            filtered_node_map.append(node)
+
+    # Create a set of node_ids from filtered_node_map and superset_node_map
+    excluded_node_ids = set(
+        node['node_id'] for node in filtered_node_map
+            ).union(node['node_id'] for node in superset_node_map)
+
+    # Filter clusters that are not in excluded_node_ids
+    non_excluded_clusters = [
+        cluster for cluster in clusters
+        if cluster['node_id'] not in excluded_node_ids
         ]
 
-    # format the final dictionary
-    X = {"icoord": X.get_column("icoord").to_list(),
-         "dcoord": X.get_column("dcoord").to_list(),
-         "ivl": ivl,
-         "color_list": color_list}
+    # Create a list to store the result
+    subset_clusters = []
 
-    return X
+    # Iterate over filtered_node_map
+    for filtered_cluster in filtered_node_map:
+        distances = []
+        for cluster in non_excluded_clusters:
+            if (
+                cluster['n_members'] > 1
+                    and set(cluster['members']
+                            ).issubset(set(filtered_cluster['members']))):
+                distances.append(cluster['distance'])
+        if distances:
+            subset_clusters.append(
+                {'node_id': filtered_cluster['node_id'], 'distance': distances}
+                )
+
+    # Add 'truncated_id' to each dictionary in filtered_node_map
+    for idx, node in enumerate(
+        sorted(filtered_node_map, key=lambda x: x['members'][0])
+            ):
+        node['truncated_id'] = idx
+
+    # Create a mapping from node_id to truncated_id
+    node_id_to_truncated_id = {
+        node['node_id']: node['truncated_id'] for node in filtered_node_map
+        }
+
+    # Add 'truncated_id' to each dictionary in subset_clusters
+    for cluster in subset_clusters:
+        cluster['truncated_id'] = node_id_to_truncated_id[cluster['node_id']]
+
+    # Create a list of tuples
+    contraction_marks = []
+
+    # Iterate over subset_clusters
+    for cluster in subset_clusters:
+        truncated_id = cluster['truncated_id']
+        for distance in cluster['distance']:
+            contraction_marks.append((10.0 * truncated_id + 5.0, distance))
+
+    # Sort the list of tuples
+    contraction_marks = sorted(contraction_marks, key=lambda x: (x[0], x[1]))
+
+    return contraction_marks
 
 
-def _vnc_dendrogram(Z,
-                    p=30,
-                    truncate_mode=None,
-                    color_threshold=0,
-                    get_leaves=True,
-                    orientation='top',
-                    labels=None,
-                    count_sort=False,
-                    distance_sort=False,
-                    show_leaf_counts=True,
-                    no_plot=True,
-                    no_labels=False,
-                    leaf_font_size=None,
-                    leaf_rotation=None,
-                    leaf_label_func=None,
-                    show_contracted=False,
-                    link_color_func=None,
-                    ax=None,
-                    above_threshold_color='k'):
+def _convert_linkage_to_coordinates(Z: np.ndarray):
     """
-    This is a workaround to access the contraction marks
-    to allow for customized plotting.
+    Converts a linkage matrix to coordinates for plotting a dendrogram.
+
+    Parameters
+    ----------
+    Z : np.ndarray
+        The linkage matrix.
+
+    Returns
+    -------
+    dict
+        A dictionary containing 'icoord', 'dcoord', and 'ivl'
+        for plotting the dendrogram.
     """
-    xp = sch.array_namespace(Z)
-    Z = sch._asarray(Z, order='c', xp=xp)
+    ivl = [i for i in range(Z.shape[0] + 1)]
+    n = len(ivl)
+    icoord = []
+    dcoord = []
+    clusters = {i: [i] for i in range(n)}
+    current_index = n
+    positions = {i: (i + 1) * 10 - 5 for i in range(n)}
+    heights = {i: 0 for i in range(n)}
 
-    if orientation not in ["top", "left", "bottom", "right"]:
-        raise ValueError("orientation must be one of 'top', 'left', "
-                         "'bottom', or 'right'")
+    for i in range(len(Z)):
+        cluster1 = int(Z[i, 0])
+        cluster2 = int(Z[i, 1])
+        dist = Z[i, 2].item()
+        new_cluster = clusters[cluster1] + clusters[cluster2]
+        clusters[current_index] = new_cluster
 
-    if labels is not None:
-        try:
-            len_labels = len(labels)
-        except (TypeError, AttributeError):
-            len_labels = labels.shape[0]
-        if Z.shape[0] + 1 != len_labels:
-            raise ValueError("Dimensions of Z and labels must be consistent.")
+        x1 = positions[cluster1]
+        x2 = positions[cluster2]
+        x_new = (x1 + x2) / 2
+        positions[current_index] = x_new
 
-    sch.is_valid_linkage(Z, throw=True, name='Z')
+        h1 = heights[cluster1]
+        h2 = heights[cluster2]
+        heights[current_index] = dist
+
+        icoord.append([x1, x1, x2, x2])
+        dcoord.append([h1, dist, dist, h2])
+
+        current_index += 1
+
+    # Sort icoord and dcoord by the first element in each icoord list
+    sorted_indices = sorted(range(len(icoord)), key=lambda i: icoord[i][0])
+    icoord = [icoord[i] for i in sorted_indices]
+    dcoord = [dcoord[i] for i in sorted_indices]
+
+    return {"icoord": icoord, "dcoord": dcoord, "ivl": ivl}
+
+
+def _vnc_calculate_info(Z: np.ndarray,
+                        p=None,
+                        truncate=False,
+                        contraction_marks=False,
+                        labels=None):
+    Z = Z.copy()
     Zs = Z.shape
     n = Zs[0] + 1
 
-    if isinstance(p, (int, float)):
-        p = int(p)
+    if labels is not None:
+        if Zs[0] + 1 != len(labels):
+            labels = None
+            print(dedent(
+                """
+                Dimensions of Z and labels are not consistent.
+                Using defalut labels.
+                """))
+    if labels is None:
+        labels = [str(i) for i in range(Zs[0] + 1)]
     else:
-        raise TypeError('The second argument must be a number')
+        labels = labels
 
-    if p > n or p == 0:
-        p = n
+    if p is not None and p > n or p < 2:
+        p = None
+        truncate = False
+        contraction_marks = False
 
-    dist = [x[2].item() for x in Z]
-    if p > 1 and p < n:
+    if p is not None:
+        cluster_assignment = [i.item() for i in sch.cut_tree(Z, p)]
+
+        # Create a dictionary to hold the clusters
+        cluster_dict = {}
+
+        # Iterate over the labels and clusters to populate the dictionary
+        for label, cluster in zip(labels, cluster_assignment):
+            cluster_key = f'cluster_{cluster + 1}'
+            if cluster_key not in cluster_dict:
+                cluster_dict[cluster_key] = []
+            cluster_dict[cluster_key].append(label)
+
+        # Convert the dictionary to a list of dictionaries
+        cluster_list = [{key: value} for key, value in cluster_dict.items()]
+
+        # Create a new list to hold the cluster labels
+        cluster_labels = []
+
+        # Iterate over the cluster_list to create the labels
+        for cluster in cluster_list:
+            for key, value in cluster.items():
+                if len(value) == 1:
+                    cluster_labels.append(str(value[0]))
+                else:
+                    cluster_labels.append(f"{value[0]}-{value[-1]}")
+
+        # get distance for plotting cut line
+        dist = [x[2].item() for x in Z]
         dist_threshold = np.mean(
             [dist[len(dist)-p+1], dist[len(dist)-p]]
         )
     else:
         dist_threshold = None
+        cluster_list = None
+        cluster_labels = None
 
-    if truncate_mode not in ('lastp', 'mtica', 'level', 'none', None):
-        # 'mtica' is kept working for backwards compat.
-        raise ValueError('Invalid truncation mode.')
+    if truncate is True:
+        truncated_Z = _contract_linkage_matrix(Z, p=p)
 
-    if truncate_mode == 'mtica':
-        # 'mtica' is an alias
-        truncate_mode = 'level'
+        if contraction_marks is True:
+            contraction_marks = _contraction_mark_coordinates(Z, p=p)
+        else:
+            contraction_marks = None
 
-    if truncate_mode == 'level':
-        if p <= 0:
-            p = np.inf
-
-    if get_leaves:
-        lvs = []
+        Z = truncated_Z
     else:
-        lvs = None
+        Z = Z
+        contraction_marks = None
 
-    icoord_list = []
-    dcoord_list = []
-    color_list = []
-    current_color = [0]
-    currently_below_threshold = [False]
-    ivl = []  # list of leaves
+    R = _convert_linkage_to_coordinates(Z)
 
-    if color_threshold is None or (isinstance(color_threshold, str) and
-                                   color_threshold == 'default'):
-        color_threshold = xp.max(Z[:, 2]) * 0.7
-
-    R = {'icoord': icoord_list, 'dcoord': dcoord_list, 'ivl': ivl,
-         'leaves': lvs, 'color_list': color_list}
-
-    # Empty list will be filled in _dendrogram_calculate_info
-    contraction_marks = [] if show_contracted else None
-    clusters = [] if p > 1 else None
-    cluster_labels = [] if p > 1 else None
-    cluster_summary = [] if p > 1 else None
-
-    sch._dendrogram_calculate_info(
-        Z=Z, p=p,
-        truncate_mode=truncate_mode,
-        color_threshold=color_threshold,
-        get_leaves=get_leaves,
-        orientation=orientation,
-        labels=labels,
-        count_sort=count_sort,
-        distance_sort=distance_sort,
-        show_leaf_counts=show_leaf_counts,
-        i=2*n - 2,
-        iv=0.0,
-        ivl=ivl,
-        n=n,
-        icoord_list=icoord_list,
-        dcoord_list=dcoord_list,
-        lvs=lvs,
-        current_color=current_color,
-        color_list=color_list,
-        currently_below_threshold=currently_below_threshold,
-        leaf_label_func=leaf_label_func,
-        contraction_marks=contraction_marks,
-        link_color_func=link_color_func,
-        above_threshold_color=above_threshold_color)
-
-    if not no_plot:
-        mh = xp.max(Z[:, 2])
-        sch._plot_dendrogram(icoord_list,
-                             dcoord_list,
-                             ivl,
-                             p,
-                             n,
-                             mh,
-                             orientation,
-                             no_labels,
-                             color_list,
-                             leaf_font_size=leaf_font_size,
-                             leaf_rotation=leaf_rotation,
-                             contraction_marks=contraction_marks,
-                             ax=ax,
-                             above_threshold_color=above_threshold_color)
-
-    R["leaves_color_list"] = sch._get_leaves_color_list(R)
-
-    if truncate_mode is None:
-        R = _reorder_leaves(R)
-        if p > 1:
-            clusters_assignment = sch.fcluster(Z, p, criterion='maxclust') - 1
-            df_clst = pl.DataFrame({'cluster': clusters_assignment}
-                                   ).with_row_index().sort("index")
-            df_clst = df_clst.with_columns(
-                cluster_min=pl.col("index").min().over(pl.col("cluster"))
-                ).with_columns(
-                size=pl.col("index").count().over(pl.col("cluster"))
-                ).with_columns(
-                cluster_max=pl.col("index").max().over(pl.col("cluster"))
-                )
-            clusters = df_clst.to_numpy(structured=True)
-            cluster_labels = _get_cluster_labels(clusters, labels)
-            cluster_summary = _get_cluster_summary(clusters, labels)
-
-    if truncate_mode == 'lastp':
-        R2 = sch.dendrogram(Z, no_plot=True)
-        clusters = R['ivl']
-        clusters_assignment = []
-        for i in range(len(clusters)):
-            if isinstance(clusters[i], str) and clusters[i].startswith("("):
-                n = clusters[i].removeprefix("(").removesuffix(")")
-                n = int(n)
-                clusters_assignment.append([i] * n)
-            else:
-                clusters_assignment.append([i])
-        clusters_assignment = [x for xs in clusters_assignment for x in xs]
-        df_clst = pl.DataFrame({'index': R2["leaves"],
-                                'cluster': clusters_assignment}).sort("index")
-        df_clst = df_clst.with_columns(
-            cluster_min=pl.col("index").min().over(pl.col("cluster"))
-            ).with_columns(
-            size=pl.col("index").count().over(pl.col("cluster"))
-            ).with_columns(
-            cluster_max=pl.col("index").max().over(pl.col("cluster"))
-            )
-        clusters = df_clst.to_numpy(structured=True)
-        cluster_labels = _get_cluster_labels(clusters, labels)
-        cluster_summary = _get_cluster_summary(clusters, labels)
-
-    mh = xp.max(Z[:, 2])
-    R['n'] = n
+    mh = np.max(Z[:, 2])
+    Zn = Z.shape[0] + 1
+    color_list = ['k'] * (Zn - 1)
+    leaves_color_list = ['k'] * Zn
+    R['n'] = Zn
     R['mh'] = mh
     R['p'] = p
     R['labels'] = labels
-    R['clusters'] = clusters
+    R['color_list'] = color_list
+    R['leaves_color_list'] = leaves_color_list
+    R['clusters'] = cluster_list
     R['cluster_labels'] = cluster_labels
-    R['cluster_summary'] = cluster_summary
     R['dist_threshold'] = dist_threshold
     R["contraction_marks"] = contraction_marks
 
     return R
+
+
+def _lowess(x,
+            y,
+            f=1./3.):
+    """
+    Basic LOWESS smoother with uncertainty.
+    Note:
+        - Not robust (so no iteration) and
+             only normally distributed errors.
+        - No higher order polynomials d=1
+            so linear smoother.
+    """
+    # get some paras
+    # effective width after reduction factor
+    xwidth = f*(x.max()-x.min())
+    # number of obs
+    N = len(x)
+    # Don't assume the data is sorted
+    order = np.argsort(x)
+    # storage
+    y_sm = np.zeros_like(y)
+    y_stderr = np.zeros_like(y)
+    # define the weigthing function -- clipping too!
+    tricube = lambda d: np.clip((1 - np.abs(d)**3)**3, 0, 1)  # noqa: E731
+    # run the regression for each observation i
+    for i in range(N):
+        dist = np.abs((x[order][i]-x[order]))/xwidth
+        w = tricube(dist)
+        # form linear system with the weights
+        A = np.stack([w, x[order]*w]).T
+        b = w * y[order]
+        ATA = A.T.dot(A)
+        ATb = A.T.dot(b)
+        # solve the syste
+        sol = np.linalg.solve(ATA, ATb)
+        # predict for the observation only
+        # equiv of A.dot(yest) just for k
+        yest = A[i].dot(sol)
+        place = order[i]
+        y_sm[place] = yest
+        sigma2 = (np.sum((A.dot(sol) - y[order])**2)/N)
+        # Calculate the standard error
+        y_stderr[place] = np.sqrt(sigma2 *
+                                  A[i].dot(np.linalg.inv(ATA)
+                                           ).dot(A[i]))
+    return y_sm, y_stderr
 
 
 class TimeSeries:
@@ -787,6 +696,191 @@ class TimeSeries:
         self.clusters = None
         self.distance_threshold = None
 
+    def timeviz_barplot(self,
+                        width=8,
+                        height=4,
+                        dpi=150,
+                        barwidth=4,
+                        fill_color='#440154',
+                        tick_interval=None,
+                        label_rotation=None):
+        """
+        Generate a bar plot of token frequenices over time.
+
+        Parameters
+        ----------
+        width:
+            The width of the plot.
+        height:
+            The height of the plot.
+        dpi:
+            The resolution of the plot.
+        barwidth:
+            The width of the bars.
+
+        Returns
+        -------
+        Figure
+            A matplotlib figure.
+
+        """
+        xx = self.time_intervals
+        yy = self.frequencies
+
+        if label_rotation is None:
+            rotation = 90
+        else:
+            rotation = label_rotation
+
+        if tick_interval is None:
+            interval = np.diff(xx)[0]
+        else:
+            interval = tick_interval
+
+        start_value = np.min(xx)
+
+        fig, ax = plt.subplots(figsize=(width, height), dpi=dpi)
+        ax.bar(xx, yy, color=fill_color, edgecolor='black',
+               linewidth=.5, width=barwidth)
+        # Despine
+        ax.spines['right'].set_visible(False)
+        ax.spines['top'].set_visible(False)
+        ax.axhline(y=0, color='black', linestyle='-', linewidth=.5)
+
+        ax.tick_params(axis="x", which="both", labelrotation=rotation)
+        ax.grid(axis='y', color='w', linestyle='--', linewidth=.5)
+        ax.xaxis.set_major_locator(plt.MultipleLocator(base=interval,
+                                                       offset=start_value))
+
+        return fig
+
+    def timeviz_scatterplot(self,
+                            width=8,
+                            height=4,
+                            dpi=150,
+                            point_color='black',
+                            point_size=0.5,
+                            ci='standard'):
+        """
+        Generate a bar plot of token frequenices over time.
+
+        Parameters
+        ----------
+        width:
+            The width of the plot.
+        height:
+            The height of the plot.
+        dpi:
+            The resolution of the plot.
+        point_size:
+            The size of the points.
+
+        Returns
+        -------
+        Figure
+            A matplotlib figure.
+
+        """
+        ci_types = ['standard', 'strict', 'both']
+        if ci not in ci_types:
+            ci = "standard"
+
+        xx = self.time_intervals
+        yy = self.frequencies
+
+        order = np.argsort(xx)
+
+        fig, ax = plt.subplots(figsize=(width, height), dpi=dpi)
+
+        # run it
+        y_sm, y_std = _lowess(xx, yy, f=1./5.)
+        # plot it
+        ax.plot(xx[order], y_sm[order],
+                color='tomato', linewidth=.5, label='LOWESS')
+        if ci == 'standard':
+            ax.fill_between(
+                xx[order], y_sm[order] - 1.96*y_std[order],
+                y_sm[order] + 1.96*y_std[order], alpha=0.3,
+                label='95 uncertainty')
+        if ci == 'strict':
+            ax.fill_between(
+                xx[order], y_sm[order] - y_std[order],
+                y_sm[order] + y_std[order], alpha=0.3,
+                label='97.5 uncertainty')
+        if ci == 'both':
+            ax.fill_between(
+                xx[order], y_sm[order] - 1.96*y_std[order],
+                y_sm[order] + 1.96*y_std[order], alpha=0.3,
+                label='95 uncertainty')
+            ax.fill_between(
+                xx[order], y_sm[order] - y_std[order],
+                y_sm[order] + y_std[order], alpha=0.3,
+                label='97.5 uncertainty')
+
+        ax.scatter(xx, yy, s=point_size, color=point_color, alpha=0.75)
+
+        # Despine
+        ax.spines['right'].set_visible(False)
+        ax.spines['top'].set_visible(False)
+
+        ticks = [tick for tick in plt.gca().get_yticks() if tick >= 0]
+        plt.gca().set_yticks(ticks)
+
+        return fig
+
+    def timeviz_screeplot(self,
+                          distance="sd",
+                          width=6,
+                          height=3,
+                          dpi=150,
+                          point_size=0.75,):
+        """Generate a scree plot for determining clusters.
+
+        Parameters
+        ----------
+        width:
+            The width of the plot.
+        height:
+            The height of the plot.
+        dpi:
+            The resolution of the plot.
+        mda:
+            Whether or not non-colinear features should be
+            filter out per Biber's multi-dimensional analysis procedure.
+
+        Returns
+        -------
+        Figure
+            A matplotlib figure.
+
+        """
+        dist_types = ['sd', 'cv']
+        if distance not in dist_types:
+            distance = "sd"
+
+        if distance == "cv":
+            dist = self.distances_cv
+        else:
+            dist = self.distances_sd
+
+        # SCREEPLOT
+        yy = dist[::-1]
+        xx = np.array([i for i in range(1, len(yy) + 1)])
+        fig, ax = plt.subplots(figsize=(width, height), dpi=dpi)
+        ax.scatter(x=xx,
+                   y=yy,
+                   marker='o',
+                   s=point_size,
+                   facecolors='none',
+                   edgecolors='black')
+        ax.set_xlabel('Clusters')
+        ax.set_ylabel(f'Distance (in summed {distance})')
+
+        # Despine
+        ax.spines['right'].set_visible(False)
+        ax.spines['top'].set_visible(False)
+        return fig
+
     def timeviz_vnc(self,
                     width=6,
                     height=4,
@@ -821,9 +915,9 @@ class TimeSeries:
 
         # Plot the corresponding dendrogram
         if orientation == "horizontal" and periodize is not True:
-            X = _vnc_dendrogram(Z,
-                                p=n_periods,
-                                labels=self.time_intervals)
+            X = _vnc_calculate_info(Z,
+                                    p=n_periods,
+                                    labels=self.time_intervals)
 
             sch._plot_dendrogram(icoords=X['icoord'],
                                  dcoords=X['dcoord'],
@@ -852,11 +946,11 @@ class TimeSeries:
                            linewidth=.5)
 
         if orientation == "horizontal" and periodize is True:
-            X = _vnc_dendrogram(Z,
-                                truncate_mode="lastp",
-                                p=n_periods,
-                                show_contracted=True,
-                                labels=self.time_intervals)
+            X = _vnc_calculate_info(Z,
+                                    truncate=True,
+                                    p=n_periods,
+                                    contraction_marks=True,
+                                    labels=self.time_intervals)
             sch._plot_dendrogram(icoords=X['icoord'],
                                  dcoords=X['dcoord'],
                                  ivl=X['ivl'],
@@ -877,9 +971,9 @@ class TimeSeries:
             plt.setp(ax.collections, linewidth=.5)
 
         if orientation == "vertical" and periodize is not True:
-            X = _vnc_dendrogram(Z,
-                                p=n_periods,
-                                labels=self.time_intervals)
+            X = _vnc_calculate_info(Z,
+                                    p=n_periods,
+                                    labels=self.time_intervals)
 
             sch._plot_dendrogram(icoords=X['icoord'],
                                  dcoords=X['dcoord'],
@@ -910,11 +1004,11 @@ class TimeSeries:
                            linewidth=.5)
 
         if orientation == "vertical" and periodize is True:
-            X = _vnc_dendrogram(Z,
-                                truncate_mode="lastp",
-                                p=n_periods,
-                                show_contracted=True,
-                                labels=self.time_intervals)
+            X = _vnc_calculate_info(Z,
+                                    truncate=True,
+                                    p=n_periods,
+                                    contraction_marks=True,
+                                    labels=self.time_intervals)
             sch._plot_dendrogram(icoords=X['icoord'],
                                  dcoords=X['dcoord'],
                                  ivl=X['ivl'],

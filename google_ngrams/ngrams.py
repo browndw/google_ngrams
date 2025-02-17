@@ -2,12 +2,33 @@
 import re
 import polars as pl
 from textwrap import dedent
-from data import sources
+from .data import sources
 
 
-def google_ngram(word_forms,
+def google_ngram(word_forms: list,
                  variety="eng",
-                 by="decade"):
+                 by="decade") -> pl.DataFrame:
+    """
+    Fetches Google Ngram data for specified word forms.
+
+    This function retrieves ngram data from the Google Books Ngram Viewer
+    for the given word forms. It supports different varieties of English
+    (e.g., British, American) and allows aggregation by year or decade.
+
+    Parameters
+    ----------
+    word_forms : list
+        List of word forms to search for.
+    variety : str
+        Variety of English ('eng', 'gb', 'us', 'fiction').
+    by : str
+        Aggregation level ('year' or 'decade').
+
+    Returns
+    -------
+    pl.DataFrame
+        DataFrame containing the ngram data.
+    """
     variety_types = ["eng", "gb", "us", "fiction"]
     if variety not in variety_types:
         raise ValueError("""variety_types
@@ -67,7 +88,7 @@ def google_ngram(word_forms,
         """
         Accessing repository. For larger ones
         (e.g., ngrams containing 2 or more words).
-        This may take a few minutes. A progress bar should appear shortly...
+        This may take a few minutes...
         """
     ))
 
@@ -79,11 +100,15 @@ def google_ngram(word_forms,
     grep_words = "|".join([f"^{wf}$" for wf in word_forms])
 
     # Read the data from the google repository and format
-    df = pl.scan_csv(repo, separator='\t', has_header=False)
+    schema = {"column_1": pl.String,
+              "column_2": pl.Int64,
+              "column_3": pl.Int64,
+              "column_4": pl.Int64}
+    df = pl.scan_csv(repo, separator='\t', has_header=False, schema=schema)
     filtered_df = df.filter(
         pl.col("column_1").str.contains(r"(?i)" + grep_words)
         )
-    all_grams = filtered_df.collect()
+    all_grams = filtered_df.collect(streaming=True)
 
     all_grams = (
         all_grams
@@ -170,6 +195,13 @@ def google_ngram(word_forms,
             )
     )
     sum_tokens.insert_column(1, (pl.lit(word_forms)).alias("Token"))
+    sum_tokens = (
+        sum_tokens
+        .with_columns(
+            pl.col("Year").dt.year().alias("Year")
+            )
+        .drop("Total")
+        )
 
     if by == "decade":
         sum_tokens = sum_tokens.rename({"Year": "Decade"})
