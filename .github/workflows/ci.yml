@@ -1,9 +1,7 @@
 name: Publish Python distribution to PyPI
 
 on:
-  push:
-    tags:
-      - "v*.*.*"
+  push
 
 jobs:
   build:
