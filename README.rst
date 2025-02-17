@@ -66,15 +66,19 @@ The returned DataFrame, then, can be manipulated using the polars API:
 
     import polars as pl
     
-    xray_filtered = xray_decade.filter(pl.col("Decade" )>= 1900)
+    xray_filtered = xray_decade.filter(pl.col("Decade") >= 1900)
 
 
 Analyzing time series data
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-To analyze the data, 
+To analyze the data, use :code`TimeSeries`, specifying a column of time intervals and a column of relative frequencies:
 
+.. code-block:: time_series
 
+    xray_ts = TimeSeries(xray_filtered, time_col="Decade", values_col="RF")
+    
+    
 License
 -------
 
