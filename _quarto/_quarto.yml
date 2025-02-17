@@ -20,8 +20,8 @@ website:
         file: reference/index.qmd
       - text: Learn more
         menu:
-          - text: "Biber features"
-            file: feature-categories.qmd
+          - text: "VNC Clustering"
+            file: vnc-clustering.qmd
           - text: "psuedobibeR for R"
             href: https://cran.r-project.org/web/packages/pseudobibeR/index.html
             target: _blank
