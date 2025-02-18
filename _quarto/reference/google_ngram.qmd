@@ -1,0 +1,25 @@
+# google_ngram { #google_ngrams.ngrams.google_ngram }
+
+```python
+ngrams.google_ngram(word_forms, variety='eng', by='decade')
+```
+
+Fetches Google Ngram data for specified word forms.
+
+This function retrieves ngram data from the Google Books Ngram Viewer
+for the given word forms. It supports different varieties of English
+(e.g., British, American) and allows aggregation by year or decade.
+
+## Parameters {.doc-section .doc-section-parameters}
+
+| Name       | Type   | Description                                        | Default    |
+|------------|--------|----------------------------------------------------|------------|
+| word_forms | List   | List of word forms to search for.                  | _required_ |
+| variety    | str    | Variety of English ('eng', 'gb', 'us', 'fiction'). | `'eng'`    |
+| by         | str    | Aggregation level ('year' or 'decade').            | `'decade'` |
+
+## Returns {.doc-section .doc-section-returns}
+
+| Name   | Type         | Description                          |
+|--------|--------------|--------------------------------------|
+|        | pl.DataFrame | DataFrame containing the ngram data. |

@@ -28,7 +28,7 @@ You can install the released version of google_ngrams from `PyPI <https://pypi.o
 
 .. code-block:: install-google_ngrams
 
-    pip install google_ngrams
+    pip install google-ngrams
 
 
 Usage

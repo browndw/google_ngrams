@@ -1,0 +1,22 @@
+# Reference {.doc .doc-index}
+
+## google_ngrams fetch function
+
+Read in Google n-gram data
+
+| | |
+| --- | --- |
+| [google_ngram](google_ngram.qmd#google_ngrams.ngrams.google_ngram) | Fetches Google Ngram data for specified word forms. |
+
+## google_ngrams TimeSeries
+
+Analyze time series data
+
+| | |
+| --- | --- |
+| [timeviz_barplot](timeviz_barplot.qmd#google_ngrams.TimeSeries.timeviz_barplot) | Generate a bar plot of token frequenices over time. |
+| [timeviz_scatterplot](timeviz_scatterplot.qmd#google_ngrams.TimeSeries.timeviz_scatterplot) | Generate a scatter plot of token frequenices over time |
+| [timeviz_screeplot](timeviz_screeplot.qmd#google_ngrams.TimeSeries.timeviz_screeplot) | Generate a scree plot for determining clusters. |
+| [timeviz_screeplot](timeviz_screeplot.qmd#google_ngrams.TimeSeries.timeviz_screeplot) | Generate a scree plot for determining clusters. |
+| [timeviz_vnc](timeviz_vnc.qmd#google_ngrams.TimeSeries.timeviz_vnc) | Generate a dendrogram  using the clustering method, |
+| [cluster_summary](cluster_summary.qmd#google_ngrams.TimeSeries.cluster_summary) | Print a summary of cluster membership. |

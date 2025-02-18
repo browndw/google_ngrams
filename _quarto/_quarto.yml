@@ -20,47 +20,35 @@ website:
         file: reference/index.qmd
       - text: Learn more
         menu:
-          - text: "VNC Clustering"
-            file: vnc-clustering.qmd
-          - text: "psuedobibeR for R"
+          - text: "VNC Clustering for R"
             href: https://cran.r-project.org/web/packages/pseudobibeR/index.html
             target: _blank
     right:
       - icon: github
-        href: https://github.com/browndw/pybiber
-        aria-label: pybiber on GitHub
+        href: https://github.com/browndw/google_ngrams
+        aria-label: google_ngrams on GitHub
   sidebar:
     style: "floating"
     collapse-level: 1
     contents:
-      - section: Parsing Data
+      - section: Fetching Data
         contents:
-          - text: "`biber`"
-            href: reference/biber.qmd
-          - text: "`corpus_from_folder`"
-            href: reference/corpus_from_folder.qmd
-          - text: "`get_noun_phrases`"
-            href: reference/get_noun_phrases.qmd
-          - text: "`get_text_paths`"
-            href: reference/get_text_paths.qmd
-          - text: "`readtext`"
-            href: reference/readtext.qmd
-          - text: "`spacy_parse`"
-            href: reference/spacy_parse.qmd
-      - section: Analyzing Data
+          - text: "`google_ngram`"
+            href: reference/google_ngram.qmd
+      - section: Time Series
         contents:
-          - text: "`mda`"
-            href: reference/mda.qmd
-          - text: "`pca`"
-            href: reference/pca.qmd
-          - text: "`mdaviz_screeplot`"
-            href: reference/mdaviz_screeplot.qmd
-          - text: "`mdaviz_groupmeans`"
-            href: reference/mdaviz_groupmeans.qmd
-          - text: "`pcaviz_groupmeans`"
-            href: reference/pcaviz_groupmeans.qmd
-          - text: "`pcaviz_contrib`"
-            href: reference/pcaviz_contrib.qmd
+          - text: "`timeviz_barplot`"
+            href: reference/timeviz_barplot.qmd
+          - text: "`timeviz_scatterplot`"
+            href: reference/timeviz_scatterplot.qmd
+          - text: "`timeviz_screeplot`"
+            href: reference/timeviz_screeplot.qmd
+          - text: "`timeviz_screeplot`"
+            href: reference/timeviz_screeplot.qmd
+          - text: "`timeviz_vnc`"
+            href: reference/timeviz_vnc.qmd
+          - text: "`cluster_summary`"
+            href: reference/cluster_summary.qmd
 
 bibliography: references.bib
 
@@ -70,32 +58,23 @@ format:
 
 quartodoc:
   title: Reference
-  package: pybiber
+  package: google_ngrams
   sections:
-    - title: pybiber utility functions
-      desc: "Read in and prepare data"
-      package: pybiber.parse_utils
+    - title: google_ngrams fetch function
+      desc: "Read in Google n-gram data"
+      package: google_ngrams.ngrams
       contents:
-        - corpus_from_folder
-        - get_text_paths
-        - readtext
-        - spacy_parse
-        - get_noun_phrases
-    - title: pybiber parse
-      desc: "Generate a biber document-feature matrix"
-      package: pybiber.parse_functions
+        - google_ngram
+    - title: google_ngrams TimeSeries
+      desc: "Analyze time series data"
+      package: google_ngrams.TimeSeries
       contents:
-        - biber
-    - title: pybiber methods
-      desc: "Analyze a biber document-feature matrix"
-      package: pybiber.BiberAnalyzer
-      contents:
-        - mda
-        - pca
-        - mdaviz_screeplot
-        - mdaviz_groupmeans
-        - pcaviz_groupmeans
-        - pcaviz_contrib
+        - timeviz_barplot
+        - timeviz_scatterplot
+        - timeviz_screeplot
+        - timeviz_screeplot
+        - timeviz_vnc
+        - cluster_summary
 
 filters:
   - interlinks

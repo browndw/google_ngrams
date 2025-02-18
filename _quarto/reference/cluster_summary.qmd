@@ -1,0 +1,13 @@
+# cluster_summary { #google_ngrams.TimeSeries.cluster_summary }
+
+```python
+TimeSeries.cluster_summary()
+```
+
+Print a summary of cluster membership.
+
+## Returns {.doc-section .doc-section-returns}
+
+| Name   | Type                   | Description   |
+|--------|------------------------|---------------|
+|        | Prints to the console. |               |
