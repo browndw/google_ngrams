@@ -13,58 +13,74 @@ First we will import the functions:
 from google_ngrams import google_ngram
 ```
 
-There are a variety of ways of preparing and reading in a corpus for processing. The [](`~pybiber.parse_utils.spacy_parse`) function requires polars DataFrame with a `doc_id` and a `text` column. Such a DataFrame can be prepared ahead of time and read in using one of polars [input functions](https://docs.pola.rs/api/python/dev/reference/io.html). For example, the [Human-AI Parallel corpus mini](https://huggingface.co/datasets/browndw/human-ai-parallel-corpus-mini){.external target="_blank"} can be read directly from huggingface:
+Then, we can fetch, for example, *x-ray* by year in American English:
 
 ```{python}
-df = pl.read_parquet('hf://datasets/browndw/human-ai-parallel-corpus-mini/hape_mini-text.parquet')
-df.head()
+xray_year = google_ngram(word_forms = ["x-ray"], variety = "us", by = "year")
 ```
 
-Alternatively, a corpus of plain text files can be stored in a directory. All of the files can, then, be read into a DataFrame using [](`~pybiber.parse_utils.corpus_from_folder`)
-
-Here, we will use the MICUSP mini data:
 
 ```{python}
-from pybiber.data import micusp_mini
+xray_year.head()
 ```
 
-## Initiate a spaCy instance
 
-Initiate a model instance:
+Alternatively, the following would return counts of the combined forms *x-ray* and *x-rays* in British English by decade:
 
 ```{python}
-nlp = spacy.load("en_core_web_sm", disable=["ner"])
+xray_decade = google_ngram(word_forms = ["x-ray", "x-rays"], variety = "gb", by = "decade")
 ```
 
-::: {.callout-important}
-## Model requirements
 
-A spaCy model must be installed in your working enviroment using `python -m spacy download en_core_web_sm` or an alternative. See information about [spaCy models](https://spacy.io/usage){.external target="_blank"}. Also, the pybiber package requires a model that will execute both part-of-speech tagging and dependency parsing.
+```{python}
+xray_decade.head()
+```
+
+
+## Analyzing data
+
+To analyze data, import `TimeSeries`:
+
+```{python}
+from google_ngrams import TimeSeries
+```
+
+To use `TimeSeries`, provide a polars DataFrame, a column that identifies the time sequence and a values column that identifies the frequency varieble:
+
+```{python}
+xray_ts = TimeSeries(time_series=xray_decade, time_col='Decade', values_col='RF')
+```
+
+We can now generate visualizations like a barplot of frequencies by decade:
+
+```{python}
+xray_ts.timeviz_barplot();
+```
+
+::: {.callout-tip}
+## Filter data before VNC clustering
+
+Note that the frequencies in this example are 0 or near 0 until the turn of the twentieth century.
+
+Vizualizing VNC clustering can be made clearer by filtering out extended periods with no data. Thus, plots like this bar plot (or a similar scatterplot for by-year data) can be combined to effectively describe trajectories of change and periodization.
 :::
 
-## Parse the text data
-
-To process the corpus, use [](`~pybiber.parse_utils.spacy_parse`). Processing the `micusp_mini` corpus should take between 20-30 seconds.
+## Filter the data
 
 ```{python}
-df_spacy = pb.spacy_parse(corp=micusp_mini, nlp_model=nlp)
+import polars as pl
+
+xray_filtered = xray_decade.filter(pl.col("Decade") >= 1900)
 ```
 
-::: {.callout-note}
-The number of cores assigned can be specified using `n_process`, which can increase processing speed. The batch size can also be adjusted with `batch_size`. However, larger batch sizes may actually slow down processessing.
-:::
-
-## Extract the features
-
-After parsing the corpus, features can then be aggregated using [](`~pybiber.parse_functions.biber`).
 
 ```{python}
-df_biber = pb.biber(df_spacy)
+xray_filtered_ts = TimeSeries(time_series=xray_filtered, time_col='Decade', values_col='RF')
 ```
 
-To return absolute frequencies set `normalize=False`.
 
 ```{python}
-df_biber.head()
+xray_filtered_ts.timeviz_vnc();
 ```
+
 

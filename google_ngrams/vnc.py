@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 from textwrap import dedent
 from matplotlib.figure import Figure
 from scipy.cluster import hierarchy as sch
+from statsmodels.gam.api import GLMGam, BSplines
 
 
 def _linkage_matrix(time_series,
@@ -586,53 +587,6 @@ def _vnc_calculate_info(Z: np.ndarray,
     return R
 
 
-def _lowess(x,
-            y,
-            f=1./3.):
-    """
-    Basic LOWESS smoother with uncertainty.
-    Note:
-        - Not robust (so no iteration) and
-             only normally distributed errors.
-        - No higher order polynomials d=1
-            so linear smoother.
-    """
-    # get some paras
-    # effective width after reduction factor
-    xwidth = f*(x.max()-x.min())
-    # number of obs
-    N = len(x)
-    # Don't assume the data is sorted
-    order = np.argsort(x)
-    # storage
-    y_sm = np.zeros_like(y)
-    y_stderr = np.zeros_like(y)
-    # define the weigthing function -- clipping too!
-    tricube = lambda d: np.clip((1 - np.abs(d)**3)**3, 0, 1)  # noqa: E731
-    # run the regression for each observation i
-    for i in range(N):
-        dist = np.abs((x[order][i]-x[order]))/xwidth
-        w = tricube(dist)
-        # form linear system with the weights
-        A = np.stack([w, x[order]*w]).T
-        b = w * y[order]
-        ATA = A.T.dot(A)
-        ATb = A.T.dot(b)
-        # solve the syste
-        sol = np.linalg.solve(ATA, ATb)
-        # predict for the observation only
-        # equiv of A.dot(yest) just for k
-        yest = A[i].dot(sol)
-        place = order[i]
-        y_sm[place] = yest
-        sigma2 = (np.sum((A.dot(sol) - y[order])**2)/N)
-        # Calculate the standard error
-        y_stderr[place] = np.sqrt(sigma2 *
-                                  A[i].dot(np.linalg.inv(ATA)
-                                           ).dot(A[i]))
-    return y_sm, y_stderr
-
-
 class TimeSeries:
 
     def __init__(self,
@@ -733,6 +687,8 @@ class TimeSeries:
         ax.bar(xx, yy, color=fill_color, edgecolor='black',
                linewidth=.5, width=barwidth)
 
+        ax.set_ylabel('Frequency (per mil. words)')
+
         # Despine
         ax.spines['right'].set_visible(False)
         ax.spines['top'].set_visible(False)
@@ -751,7 +707,8 @@ class TimeSeries:
                             dpi=150,
                             point_color='black',
                             point_size=0.5,
-                            ci='standard') -> Figure:
+                            smoothing=7,
+                            confidence_interval=True) -> Figure:
         """
         Generate a scatter plot of token frequenices over time
         with a smoothed fit line and a confidence interval.
@@ -768,9 +725,10 @@ class TimeSeries:
             The color of the points.
         point_size:
             The size of the points.
-        ci:
-            The confidence interval. One of "standard" (95%),
-            "strict" (97.5%) or "both".
+        smoothing:
+            A value between 1 and 9 specifying magnitude of smoothing.
+        confidence_interval:
+            Whether to plot a confidence interval.
 
         Returns
         -------
@@ -778,43 +736,44 @@ class TimeSeries:
             A matplotlib figure.
 
         """
-        ci_types = ['standard', 'strict', 'both']
-        if ci not in ci_types:
-            ci = "standard"
+        if 0 < smoothing and smoothing < 10:
+            smoothing = smoothing
+        else:
+            smoothing = 7
+
+        smothing_value = (10 - smoothing)*10
 
         xx = self.time_intervals
         yy = self.frequencies
 
-        order = np.argsort(xx)
+        bs = BSplines(xx, df=smothing_value, degree=3)
+        gam_bs = GLMGam.from_formula('y ~ x',
+                                     data={'y': yy, 'x': xx},
+                                     smoother=bs)
+        res_bs = gam_bs.fit()
+
+        # get the fit from the glm
+        fit_line = res_bs.predict()
+        fit_line[fit_line < 0] = 0
+
+        # calculate the upper and lower ce
+        upper = res_bs.predict() + res_bs.partial_values(smooth_index=0)[1]
+        lower = res_bs.predict() - res_bs.partial_values(smooth_index=0)[1]
 
         fig, ax = plt.subplots(figsize=(width, height), dpi=dpi)
 
-        # run it
-        y_sm, y_std = _lowess(xx, yy, f=1./5.)
-        # plot it
-        ax.plot(xx[order], y_sm[order],
-                color='tomato', linewidth=.5, label='LOWESS')
-        if ci == 'standard':
-            ax.fill_between(
-                xx[order], y_sm[order] - 1.96*y_std[order],
-                y_sm[order] + 1.96*y_std[order], alpha=0.3,
-                label='95 uncertainty')
-        if ci == 'strict':
-            ax.fill_between(
-                xx[order], y_sm[order] - y_std[order],
-                y_sm[order] + y_std[order], alpha=0.3,
-                label='97.5 uncertainty')
-        if ci == 'both':
-            ax.fill_between(
-                xx[order], y_sm[order] - 1.96*y_std[order],
-                y_sm[order] + 1.96*y_std[order], alpha=0.3,
-                label='95 uncertainty')
-            ax.fill_between(
-                xx[order], y_sm[order] - y_std[order],
-                y_sm[order] + y_std[order], alpha=0.3,
-                label='97.5 uncertainty')
+        # plot fit line
+        ax.plot(xx, fit_line, color='tomato', linewidth=.5)
+
+        # add cofidence interval
+        if confidence_interval is True:
+            ax.fill_between(xx,
+                            lower,
+                            upper,
+                            color='grey', alpha=0.2)
 
         ax.scatter(xx, yy, s=point_size, color=point_color, alpha=0.75)
+        ax.set_ylabel('Frequency (per mil. words)')
 
         # Despine
         ax.spines['right'].set_visible(False)

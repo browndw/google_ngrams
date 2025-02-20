@@ -17,12 +17,13 @@ classifiers = [
     "Programming Language :: Python :: 3.13",
 ]
 requires-python = ">=3.9"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
     "importlib-resources>=6.5",
     "matplotlib>=3.5",
     "polars>=1.17",
     "scipy>=1.15",
+    "statsmodels>=0.14",
 ]
 
 [build-system]

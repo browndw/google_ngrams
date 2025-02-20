@@ -4,11 +4,15 @@ jupyter: python3
 
 # google_ngrams
 
+## Fetching data
+
 This package has functions for processing [Google's Ngram repositories](http://storage.googleapis.com/books/ngrams/books/datasetsv2.html) without having to download them locally. These repositories vary in their size, but the larger ones (like the one for the letter *s* or common bigrams) contain multiple gigabytes.
 
 The main function uses [`scan_csv` from the **polars** ](https://docs.pola.rs/api/python/dev/reference/api/polars.scan_csv.html)package to reduce memory load. Still, depending on the specific word forms being searched, loading and processing the data tables can take a few minutes.
 
-The package also supports the analysis of time series data using `TimeSeries`. Specifically, it has a python implementation of Gries and Hilpert's [-@biber1988variation] Variability-Based Neighbor Clustering.
+## Analyzing data
+
+The package also supports the analysis of time series data using `TimeSeries`. Specifically, it has a python implementation of Gries and Hilpert's [-@th2008identification; -gries2012variability] Variability-Based Neighbor Clustering.
 
 The idea is to use hierarchical clustering to aid "bottom up" periodization of language change. The python functions are built on their original R code.
 
@@ -28,100 +32,40 @@ See [pseudobibeR](https://cran.r-project.org/web/packages/pseudobibeR/index.html
 
 ## Installation
 
-You can install the released version of pybiber from [PyPI](https://pypi.org/project/pybiber/){.external target="_blank"}:
+You can install the released version of google_ngrams from [PyPI](https://pypi.org/project/google-ngrams/){.external target="_blank"}:
 
 ```bash
-pip install pybiber
-```
-
-Install a [spaCy model](https://spacy.io/usage){.external target="_blank"}:
-
-```bash
-python -m spacy download en_core_web_sm
-
-# models can also be installed using pip
-# pip install https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl
+pip install google-ngrams
 ```
 
 ## Usage
 
-To use the pybiber package, you must first import [spaCy](https://spacy.io/models){.external target="_blank"} and initiate an instance. You will also need to create a corpus. The [](`~pybiber.biber`) function expects a [polars DataFrame](https://docs.pola.rs/api/python/stable/reference/dataframe/index.html){.external target="_blank"} with a `doc_id` column and a `text` column. This follows the convention for [`readtext`](https://readtext.quanteda.io/articles/readtext_vignette.html){.external target="_blank"} and corpus processing using [quanteda](https://quanteda.io/){.external target="_blank"} in R.
+To use the google_ngrams package, import [`google_ngram`](get-started.qmd) for fetching data and [`TimeSeries`](time-series) for analyzing data.
 
 
 ```{python}
-import spacy
-import pybiber as pb
-from pybiber.data import micusp_mini
+from google_ngrams import google_ngram, TimeSeries
 ```
 
-You can see the simple data structure of a corpus:
+The [](`~google_ngrams.google_ngram`) function takes three arguments: `word_forms`, `variety`, and `by`. The first must be passed in the form of a list of strings. That list can include a single word like *teenager* or lemmas like *walk*, *walks* and *walked*: e.g., `["walk"]` or `["walk", "walks", "walked"]`. The same principal applies to ngrams > 1: `["teenager is", "teenagers are"]`. The first word in an ngram sequence should be from the same root. So the function would fail to process   ["teenager is", "child is"] . The function will combine the counts of all forms in the returned data frame.
+
+The variety argument can be one of: 'eng', 'gb', 'us', or 'fiction', for all English, British English, American English, or fiction, respectively.
 
 ```{python}
-micusp_mini.head()
+quiz_df = google_ngram(word_forms=['quiz'], by='decade')
 ```
 
-::: {.callout-tip}
-## Building your own corpus
+::: {.callout-warning}
+## Be patient
 
-To build your own corpus, a good place to start is [](`~pybiber.parse_utils.corpus_from_folder`), which reads in all of the text files from a directory.
+Google’s data tables are HUGE. Sometime running into multiple gigabytes for simple text files. Thus, depending on the table being accessed, the return time can be slow. For example, assessing the 1-gram Q file should take only a few seconds, but the 1-gram T file might take a couple of minutes to process. The 2-gram, 3-gram, etc. files are even larger and slower to process.
 :::
 
-### Initiate an instance
-
-The pybiber package requires a model that will carry out part-of-speech tagging and [dependency parsing](https://spacy.io/usage/linguistic-features){.external target="_blank"}, like one of spaCy's `en_core` models.
 
 ```{python}
-nlp = spacy.load("en_core_web_sm", disable=["ner"])
+quiz_df.head()
 ```
 
-::: {.callout-note}
-Here we are disabling `ner` or "Named Entity Recognition" from the pipeline to increase processing speed, but doing so is not necessary.
-:::
-
-### Process the corpus
-
-To process the corpus, use [](`~pybiber.parse_utils.spacy_parse`). Processing the `micusp_mini` corpus should take between 20-30 seconds.
-
-```{python}
-df_spacy = pb.spacy_parse(micusp_mini, nlp)
-```
-
-The function returns a DataFrame, which is structured like a [spacyr](https://cran.r-project.org/web/packages/spacyr/vignettes/using_spacyr.html){.external target="_blank"} output.
-
-```{python}
-df_spacy.head()
-```
-
-### Aggregate features
-
-After parsing the corpus, features can then be aggregated using [](`~pybiber.parse_functions.biber`).
-
-```{python}
-df_biber = pb.biber(df_spacy)
-```
-
-
-::: {.callout-important}
-## Feature counts
-
-In the [documentation](`~pybiber.parse_functions.biber`), note the difference beween type-token ratio (TTR) and moving average type-token ration (MATTR). For most use-cases, forcing TTR is unnecessary, but when comparing multiple corpora that haven't been processed together, it is important to make sure the same measure is being used.
-
-Also, the default is to normalize frequencies per 1000 tokens. However, absolute frequencies can be returned by setting `normalize=False`.
-:::
-
-The resulting document-feature matrix has 67 variables and a column of document ids.
-
-```{python}
-df_biber.shape
-```
-
-::: {.callout-tip}
-
-Encoding metadata into your document id's (i.e., file names) is key to further processing and analysis. In the `micusp_mini` data, for example, the first three letters before the underscore represent an academic discipline (e.g., BIO for biology, ENG for English, etc.).
-:::
-
-```{python}
-df_biber.head()
-```
+Data retrieved from the [](`~google_ngrams.google_ngram`) function (or any other time series data) can then be analyzed using `TimeSeries`.
 
 
