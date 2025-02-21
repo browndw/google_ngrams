@@ -20,8 +20,8 @@ website:
         file: reference/index.qmd
       - text: Learn more
         menu:
-          - text: "VNC Clustering for R"
-            href: https://cran.r-project.org/web/packages/pseudobibeR/index.html
+          - text: "Learn more about VNC"
+            href: https://www.stgries.info/research/2012_STG-MH_VarNeighbClustering_OxfHBHistEngl.pdf
             target: _blank
     right:
       - icon: github
@@ -43,8 +43,6 @@ website:
             href: reference/timeviz_scatterplot.qmd
           - text: "`timeviz_screeplot`"
             href: reference/timeviz_screeplot.qmd
-          - text: "`timeviz_screeplot`"
-            href: reference/timeviz_screeplot.qmd
           - text: "`timeviz_vnc`"
             href: reference/timeviz_vnc.qmd
           - text: "`cluster_summary`"
@@ -58,7 +56,7 @@ format:
 
 quartodoc:
   title: Reference
-  package: google_ngrams
+  package: google-ngrams
   sections:
     - title: google_ngrams fetch function
       desc: "Read in Google n-gram data"
@@ -71,7 +69,6 @@ quartodoc:
       contents:
         - timeviz_barplot
         - timeviz_scatterplot
-        - timeviz_screeplot
         - timeviz_screeplot
         - timeviz_vnc
         - cluster_summary

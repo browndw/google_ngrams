@@ -8,11 +8,11 @@ jupyter: python3
 
 This package has functions for processing [Google's Ngram repositories](http://storage.googleapis.com/books/ngrams/books/datasetsv2.html) without having to download them locally. These repositories vary in their size, but the larger ones (like the one for the letter *s* or common bigrams) contain multiple gigabytes.
 
-The main function uses [`scan_csv` from the **polars** ](https://docs.pola.rs/api/python/dev/reference/api/polars.scan_csv.html)package to reduce memory load. Still, depending on the specific word forms being searched, loading and processing the data tables can take a few minutes.
+The main function uses [`scan_csv`](https://docs.pola.rs/api/python/dev/reference/api/polars.scan_csv.html) from the **polars** package to reduce memory load. Still, depending on the specific word forms being searched, loading and processing the data tables can take a few minutes.
 
 ## Analyzing data
 
-The package also supports the analysis of time series data using `TimeSeries`. Specifically, it has a python implementation of Gries and Hilpert's [-@th2008identification; -gries2012variability] Variability-Based Neighbor Clustering.
+The package also supports the analysis of time series data using `TimeSeries`. Specifically, it has a python implementation of Gries and Hilpert's [-@th2008identification; -@gries2012variability] Variability-Based Neighbor Clustering.
 
 The idea is to use hierarchical clustering to aid "bottom up" periodization of language change. The python functions are built on their original R code.
 
@@ -25,8 +25,6 @@ The package also has an implementation of scipy's truncate_mode that consolidate
 ---
 
 All DataFrames are rendered using [polars](https://docs.pola.rs/api/python/stable/reference/index.html){.external target="_blank"}. If you prefer to conduct any post-processing using pandas, please refer to [the documentation](https://docs.pola.rs/api/python/stable/reference/dataframe/api/polars.DataFrame.to_pandas.html){.external target="_blank"} for converting polars to pandas. Note that conversion requires both pandas and pyarrow to be installed into your working environment.
-
-See [pseudobibeR](https://cran.r-project.org/web/packages/pseudobibeR/index.html){.external target="_blank"} for the R implementation.
 
 ---
 
@@ -47,7 +45,7 @@ To use the google_ngrams package, import [`google_ngram`](get-started.qmd) for f
 from google_ngrams import google_ngram, TimeSeries
 ```
 
-The [](`~google_ngrams.google_ngram`) function takes three arguments: `word_forms`, `variety`, and `by`. The first must be passed in the form of a list of strings. That list can include a single word like *teenager* or lemmas like *walk*, *walks* and *walked*: e.g., `["walk"]` or `["walk", "walks", "walked"]`. The same principal applies to ngrams > 1: `["teenager is", "teenagers are"]`. The first word in an ngram sequence should be from the same root. So the function would fail to process   ["teenager is", "child is"] . The function will combine the counts of all forms in the returned data frame.
+The [](`~google_ngrams.ngrams.google_ngram`) function takes three arguments: `word_forms`, `variety`, and `by`. The first must be passed in the form of a list of strings. That list can include a single word like *teenager* or lemmas like *walk*, *walks* and *walked*: e.g., `["walk"]` or `["walk", "walks", "walked"]`. The same principal applies to ngrams > 1: `["teenager is", "teenagers are"]`. The first word in an ngram sequence should be from the same root. So the function would fail to process   ["teenager is", "child is"] . The function will combine the counts of all forms in the returned data frame.
 
 The variety argument can be one of: 'eng', 'gb', 'us', or 'fiction', for all English, British English, American English, or fiction, respectively.
 
@@ -66,6 +64,17 @@ Google’s data tables are HUGE. Sometime running into multiple gigabytes for si
 quiz_df.head()
 ```
 
-Data retrieved from the [](`~google_ngrams.google_ngram`) function (or any other time series data) can then be analyzed using `TimeSeries`.
+Data retrieved from the [](`~google_ngrams.ngrams.google_ngram`) function (or any other time series data) can then be analyzed using `TimeSeries`.
 
+```{python}
+import polars as pl
+
+quiz_ts = TimeSeries(time_series=quiz_df.filter(pl.col("Decade") >= 1900), time_col='Decade', values_col='RF')
+```
+
+We can now generate visualizations like a barplot of frequencies by decade:
+
+```{python}
+quiz_ts.timeviz_barplot();
+```
 

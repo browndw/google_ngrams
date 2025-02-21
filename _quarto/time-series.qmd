@@ -1,0 +1,141 @@
+---
+title: "Time series"
+jupyter: python3
+---
+
+The `TimeSeries` can be used for generating scatterplots with smoothed fits, bar plots and variablity-based neighbor clustering dendrograms.
+
+One of defining features of VNC dendrograms is that they maintain leaf order, as their motivating purpose is to aid in periodization from "the ground up". A second, and often overlooked, feature of the VNC method is the calculation of distances. Rather than conventional euclidean measures, distances are calculated according either summed standard deviations or summed coefficients of variation.
+
+The `timeviz_vnc` function follows both criteria as established in Gries and Hilpert's original R code.
+
+## Variability-based Neighbor Clustering
+
+As a demonstration, we can replicate Gries and Hilpert's [demonstration plot](https://global.oup.com/us/companion.websites/fdscontent/uscompanion/us/static/companion.websites/nevalainen/Gries-Hilpert_web_final/vnc.individual.html).
+
+```{python}
+import polars as pl
+from google_ngrams import TimeSeries, google_ngram
+```
+
+Here is the data from their vignette:
+
+```{python}
+input = [29.47368421, 42.20472441, 72.83870968, 76.72619048, 
+           69.56521739, 62.42647059, 64.9122807, 118.9690722, 
+           177.34375]
+years = [1925, 1935, 1945, 1955, 1965, 1975, 1985, 
+           1995, 2005]
+```
+
+We can put that into a polars DataFrame:
+
+```{python}
+df = pl.DataFrame({"Year": years, "RF": input})
+```
+
+And instatiate the class:
+
+::: {.callout-important}
+
+Be sure to identify the necessary column names: a `time_col` and a `values_col`.
+
+:::
+
+
+```{python}
+TS = TimeSeries(time_series=df, time_col="Year", values_col="RF")
+```
+
+Now, the dendrogram can be plotted.
+
+```{python}
+TS.timeviz_vnc();
+```
+
+
+The output replicates [the ouput produced in R](https://global.oup.com/us/companion.websites/fdscontent/uscompanion/us/static/companion.websites/nevalainen/Gries-Hilpert_web_final/vnc.individual.html):
+
+![VNC](vnc_output1.png){width=80%}
+
+In addition, `n_periods` can be specified to "cut" the dendrogram:
+
+
+```{python}
+TS.timeviz_vnc(n_periods=3, cut_line=True);
+```
+
+The dendrogram can be also truncated like [scipy dendrogram](https://docs.scipy.org/doc/scipy/reference/generated/scipy.cluster.hierarchy.dendrogram.html) by setting `periodize=True`:
+
+
+```{python}
+TS.timeviz_vnc(n_periods=3, periodize=True, orientation="vertical");
+```
+
+After setting `n_periods` (whether or not `periodize` is set to `True`), clustering information can be returned:
+
+
+```{python}
+TS.cluster_summary()
+```
+
+## Barplots
+
+Simple barplots (most appropriately for by-decade data), can also be generated using [](`~google_ngrams.TimeSeries.timeviz_barplot`).
+
+
+```{python}
+TS.timeviz_barplot();
+```
+
+::: {.callout-note}
+
+Although this function is provided for convenience, it's easy enough to create and customize your own plots from the data returned by the `google_ngram` function.
+
+:::
+
+
+## Scatterplots
+
+Scatterplots with with a smoothed fit can be generated using [](`~google_ngrams.TimeSeries.timeviz_scatterplot`). Because the fit is calcualted with a generalized additive model (GAM), scatterplots work best by by-year data. So for this, let's generate some new data for lemmatized *witch hunt* starting in the 20th centur.
+
+
+```{python}
+word_forms = ["witch hunt", "witch hunts"]  # specify word forms
+wh_frequencies = google_ngram(word_forms, by="year")  # fetch word forms
+wh_frequencies = wh_frequencies.filter(pl.col("Year") >= 1900)  # filter out data prior to 20th century
+TS = TimeSeries(wh_frequencies, time_col="Year", values_col="RF")  # processes time series
+```
+
+Now we can plot the data:
+
+```{python}
+TS.timeviz_scatterplot();
+```
+
+The amount of smoothing can be decreased by setting the `smoothing` value closer to 1:
+
+```{python}
+TS.timeviz_scatterplot(smoothing=2);
+```
+
+Or increased up to 9:
+
+```{python}
+TS.timeviz_scatterplot(smoothing=9);
+```
+
+## Screeplots
+
+Finally, screeplots can be generated to assist in determining the number of clusters in a dendrogram using [](`~google_ngrams.TimeSeries.timeviz_screeplot`).
+
+```{python}
+TS.timeviz_screeplot();
+```
+
+Again, this is a convenience function. Users can create their own screeplots by accessing the distance values directly:
+
+```{python}
+distances = TS.distances_sd
+distances.tolist()[::-1][:10] # top 10 in decreasing order
+```

@@ -1,0 +1,325 @@
+[
+  {
+    "objectID": "reference/cluster_summary.html",
+    "href": "reference/cluster_summary.html",
+    "title": "cluster_summary",
+    "section": "",
+    "text": "TimeSeries.cluster_summary()\nPrint a summary of cluster membership.\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nPrints to the console.",
+    "crumbs": [
+      "Get started",
+      "Time Series",
+      "`cluster_summary`"
+    ]
+  },
+  {
+    "objectID": "reference/cluster_summary.html#returns",
+    "href": "reference/cluster_summary.html#returns",
+    "title": "cluster_summary",
+    "section": "",
+    "text": "Name\nType\nDescription\n\n\n\n\n\nPrints to the console.",
+    "crumbs": [
+      "Get started",
+      "Time Series",
+      "`cluster_summary`"
+    ]
+  },
+  {
+    "objectID": "reference/timeviz_barplot.html",
+    "href": "reference/timeviz_barplot.html",
+    "title": "timeviz_barplot",
+    "section": "",
+    "text": "TimeSeries.timeviz_barplot(\n    width=8,\n    height=4,\n    dpi=150,\n    barwidth=4,\n    fill_color='#440154',\n    tick_interval=None,\n    label_rotation=None,\n)\nGenerate a bar plot of token frequenices over time.\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\nwidth\n\nThe width of the plot.\n8\n\n\nheight\n\nThe height of the plot.\n4\n\n\ndpi\n\nThe resolution of the plot.\n150\n\n\nbarwidth\n\nThe width of the bars.\n4\n\n\nfill_color\n\nThe color of the bars.\n'#440154'\n\n\ntick_interval\n\nInterval spacing for the tick labels.\nNone\n\n\nlabel_rotation\n\nAngle used to rotate tick labels.\nNone\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nFigure\nA matplotlib figure.",
+    "crumbs": [
+      "Get started",
+      "Time Series",
+      "`timeviz_barplot`"
+    ]
+  },
+  {
+    "objectID": "reference/timeviz_barplot.html#parameters",
+    "href": "reference/timeviz_barplot.html#parameters",
+    "title": "timeviz_barplot",
+    "section": "",
+    "text": "Name\nType\nDescription\nDefault\n\n\n\n\nwidth\n\nThe width of the plot.\n8\n\n\nheight\n\nThe height of the plot.\n4\n\n\ndpi\n\nThe resolution of the plot.\n150\n\n\nbarwidth\n\nThe width of the bars.\n4\n\n\nfill_color\n\nThe color of the bars.\n'#440154'\n\n\ntick_interval\n\nInterval spacing for the tick labels.\nNone\n\n\nlabel_rotation\n\nAngle used to rotate tick labels.\nNone",
+    "crumbs": [
+      "Get started",
+      "Time Series",
+      "`timeviz_barplot`"
+    ]
+  },
+  {
+    "objectID": "reference/timeviz_barplot.html#returns",
+    "href": "reference/timeviz_barplot.html#returns",
+    "title": "timeviz_barplot",
+    "section": "",
+    "text": "Name\nType\nDescription\n\n\n\n\n\nFigure\nA matplotlib figure.",
+    "crumbs": [
+      "Get started",
+      "Time Series",
+      "`timeviz_barplot`"
+    ]
+  },
+  {
+    "objectID": "reference/index.html",
+    "href": "reference/index.html",
+    "title": "Reference",
+    "section": "",
+    "text": "Read in Google n-gram data\n\n\n\ngoogle_ngram\nFetches Google Ngram data for specified word forms.\n\n\n\n\n\n\nAnalyze time series data\n\n\n\ntimeviz_barplot\nGenerate a bar plot of token frequenices over time.\n\n\ntimeviz_scatterplot\nGenerate a scatter plot of token frequenices over time\n\n\ntimeviz_screeplot\nGenerate a scree plot for determining clusters.\n\n\ntimeviz_vnc\nGenerate a dendrogram using the clustering method,\n\n\ncluster_summary\nPrint a summary of cluster membership."
+  },
+  {
+    "objectID": "reference/index.html#google_ngrams-fetch-function",
+    "href": "reference/index.html#google_ngrams-fetch-function",
+    "title": "Reference",
+    "section": "",
+    "text": "Read in Google n-gram data\n\n\n\ngoogle_ngram\nFetches Google Ngram data for specified word forms."
+  },
+  {
+    "objectID": "reference/index.html#google_ngrams-timeseries",
+    "href": "reference/index.html#google_ngrams-timeseries",
+    "title": "Reference",
+    "section": "",
+    "text": "Analyze time series data\n\n\n\ntimeviz_barplot\nGenerate a bar plot of token frequenices over time.\n\n\ntimeviz_scatterplot\nGenerate a scatter plot of token frequenices over time\n\n\ntimeviz_screeplot\nGenerate a scree plot for determining clusters.\n\n\ntimeviz_vnc\nGenerate a dendrogram using the clustering method,\n\n\ncluster_summary\nPrint a summary of cluster membership."
+  },
+  {
+    "objectID": "reference/timeviz_scatterplot.html",
+    "href": "reference/timeviz_scatterplot.html",
+    "title": "timeviz_scatterplot",
+    "section": "",
+    "text": "TimeSeries.timeviz_scatterplot(\n    width=8,\n    height=4,\n    dpi=150,\n    point_color='black',\n    point_size=0.5,\n    smoothing=7,\n    confidence_interval=True,\n)\nGenerate a scatter plot of token frequenices over time with a smoothed fit line and a confidence interval.\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\nwidth\n\nThe width of the plot.\n8\n\n\nheight\n\nThe height of the plot.\n4\n\n\ndpi\n\nThe resolution of the plot.\n150\n\n\npoint_color\n\nThe color of the points.\n'black'\n\n\npoint_size\n\nThe size of the points.\n0.5\n\n\nsmoothing\n\nA value between 1 and 9 specifying magnitude of smoothing.\n7\n\n\nconfidence_interval\n\nWhether to plot a confidence interval.\nTrue\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nFigure\nA matplotlib figure.",
+    "crumbs": [
+      "Get started",
+      "Time Series",
+      "`timeviz_scatterplot`"
+    ]
+  },
+  {
+    "objectID": "reference/timeviz_scatterplot.html#parameters",
+    "href": "reference/timeviz_scatterplot.html#parameters",
+    "title": "timeviz_scatterplot",
+    "section": "",
+    "text": "Name\nType\nDescription\nDefault\n\n\n\n\nwidth\n\nThe width of the plot.\n8\n\n\nheight\n\nThe height of the plot.\n4\n\n\ndpi\n\nThe resolution of the plot.\n150\n\n\npoint_color\n\nThe color of the points.\n'black'\n\n\npoint_size\n\nThe size of the points.\n0.5\n\n\nsmoothing\n\nA value between 1 and 9 specifying magnitude of smoothing.\n7\n\n\nconfidence_interval\n\nWhether to plot a confidence interval.\nTrue",
+    "crumbs": [
+      "Get started",
+      "Time Series",
+      "`timeviz_scatterplot`"
+    ]
+  },
+  {
+    "objectID": "reference/timeviz_scatterplot.html#returns",
+    "href": "reference/timeviz_scatterplot.html#returns",
+    "title": "timeviz_scatterplot",
+    "section": "",
+    "text": "Name\nType\nDescription\n\n\n\n\n\nFigure\nA matplotlib figure.",
+    "crumbs": [
+      "Get started",
+      "Time Series",
+      "`timeviz_scatterplot`"
+    ]
+  },
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "google_ngrams",
+    "section": "",
+    "text": "This package has functions for processing Google’s Ngram repositories without having to download them locally. These repositories vary in their size, but the larger ones (like the one for the letter s or common bigrams) contain multiple gigabytes.\nThe main function uses scan_csv from the polars package to reduce memory load. Still, depending on the specific word forms being searched, loading and processing the data tables can take a few minutes."
+  },
+  {
+    "objectID": "index.html#fetching-data",
+    "href": "index.html#fetching-data",
+    "title": "google_ngrams",
+    "section": "",
+    "text": "This package has functions for processing Google’s Ngram repositories without having to download them locally. These repositories vary in their size, but the larger ones (like the one for the letter s or common bigrams) contain multiple gigabytes.\nThe main function uses scan_csv from the polars package to reduce memory load. Still, depending on the specific word forms being searched, loading and processing the data tables can take a few minutes."
+  },
+  {
+    "objectID": "index.html#analyzing-data",
+    "href": "index.html#analyzing-data",
+    "title": "google_ngrams",
+    "section": "Analyzing data",
+    "text": "Analyzing data\nThe package also supports the analysis of time series data using TimeSeries. Specifically, it has a python implementation of Gries and Hilpert’s (2008; 2012) Variability-Based Neighbor Clustering.\nThe idea is to use hierarchical clustering to aid “bottom up” periodization of language change. The python functions are built on their original R code.\nDistances, therefore, are calculated in sums of standard deviations and coefficients of variation, according to their stated method.\nDendrograms are plotted using matplotlib, following the scipy conventions for formatting coordinates. However, the package has customized functions for maintaining the plotting order of the leaves according the requirements of the method.\nThe package also has an implementation of scipy’s truncate_mode that consolidates leaves under a specified number of time periods (or clusters) while also maintaining the leaf order to facilitate the reading and interpretation of large dendrograms.\n\nAll DataFrames are rendered using polars. If you prefer to conduct any post-processing using pandas, please refer to the documentation for converting polars to pandas. Note that conversion requires both pandas and pyarrow to be installed into your working environment."
+  },
+  {
+    "objectID": "index.html#installation",
+    "href": "index.html#installation",
+    "title": "google_ngrams",
+    "section": "Installation",
+    "text": "Installation\nYou can install the released version of google_ngrams from PyPI:\npip install google-ngrams"
+  },
+  {
+    "objectID": "index.html#usage",
+    "href": "index.html#usage",
+    "title": "google_ngrams",
+    "section": "Usage",
+    "text": "Usage\nTo use the google_ngrams package, import google_ngram for fetching data and TimeSeries for analyzing data.\n\nfrom google_ngrams import google_ngram, TimeSeries\n\nThe google_ngram function takes three arguments: word_forms, variety, and by. The first must be passed in the form of a list of strings. That list can include a single word like teenager or lemmas like walk, walks and walked: e.g., [\"walk\"] or [\"walk\", \"walks\", \"walked\"]. The same principal applies to ngrams &gt; 1: [\"teenager is\", \"teenagers are\"]. The first word in an ngram sequence should be from the same root. So the function would fail to process [“teenager is”, “child is”] . The function will combine the counts of all forms in the returned data frame.\nThe variety argument can be one of: ‘eng’, ‘gb’, ‘us’, or ‘fiction’, for all English, British English, American English, or fiction, respectively.\n\nquiz_df = google_ngram(word_forms=['quiz'], by='decade')\n\n\nAccessing repository. For larger ones\n(e.g., ngrams containing 2 or more words).\nThis may take a few minutes...\n\n\n\n\n\n\n\n\n\nBe patient\n\n\n\nGoogle’s data tables are HUGE. Sometime running into multiple gigabytes for simple text files. Thus, depending on the table being accessed, the return time can be slow. For example, assessing the 1-gram Q file should take only a few seconds, but the 1-gram T file might take a couple of minutes to process. The 2-gram, 3-gram, etc. files are even larger and slower to process.\n\n\n\nquiz_df.head()\n\n\nshape: (5, 4)\n\n\n\nDecade\nToken\nAF\nRF\n\n\ni32\nlist[str]\ni64\nf64\n\n\n\n\n1680\n[\"quiz\"]\n9\n0.633208\n\n\n1690\n[\"quiz\"]\n0\n0.0\n\n\n1700\n[\"quiz\"]\n5\n0.102997\n\n\n1710\n[\"quiz\"]\n9\n0.153825\n\n\n1720\n[\"quiz\"]\n12\n0.119933\n\n\n\n\n\n\nData retrieved from the google_ngram function (or any other time series data) can then be analyzed using TimeSeries.\n\nimport polars as pl\n\nquiz_ts = TimeSeries(time_series=quiz_df.filter(pl.col(\"Decade\") &gt;= 1900), time_col='Decade', values_col='RF')\n\nWe can now generate visualizations like a barplot of frequencies by decade:\n\nquiz_ts.timeviz_barplot();"
+  },
+  {
+    "objectID": "get-started.html",
+    "href": "get-started.html",
+    "title": "Get started",
+    "section": "",
+    "text": "The google_ngram function supports different varieties of English (e.g., British, American) and allows aggregation by year or decade. The package also supports the analysis of time series data using TimeSeries."
+  },
+  {
+    "objectID": "get-started.html#fetching-data",
+    "href": "get-started.html#fetching-data",
+    "title": "Get started",
+    "section": "Fetching data",
+    "text": "Fetching data\nFirst we will import the functions:\n\nfrom google_ngrams import google_ngram\n\nThen, we can fetch, for example, x-ray by year in American English:\n\nxray_year = google_ngram(word_forms = [\"x-ray\"], variety = \"us\", by = \"year\")\n\n\nAccessing repository. For larger ones\n(e.g., ngrams containing 2 or more words).\nThis may take a few minutes...\n\n\n\n\nxray_year.head()\n\n\nshape: (5, 4)\n\n\n\nYear\nToken\nAF\nRF\n\n\ni32\nlist[str]\ni64\nf64\n\n\n\n\n1818\n[\"x - ray\"]\n3\n0.046198\n\n\n1819\n[\"x - ray\"]\n0\n0.0\n\n\n1820\n[\"x - ray\"]\n0\n0.0\n\n\n1821\n[\"x - ray\"]\n0\n0.0\n\n\n1822\n[\"x - ray\"]\n0\n0.0\n\n\n\n\n\n\nAlternatively, the following would return counts of the combined forms x-ray and x-rays in British English by decade:\n\nxray_decade = google_ngram(word_forms = [\"x-ray\", \"x-rays\"], variety = \"gb\", by = \"decade\")\n\n\nAccessing repository. For larger ones\n(e.g., ngrams containing 2 or more words).\nThis may take a few minutes...\n\n\n\n\nxray_decade.head()\n\n\nshape: (5, 4)\n\n\n\nDecade\nToken\nAF\nRF\n\n\ni32\nlist[str]\ni64\nf64\n\n\n\n\n1710\n[\"x - ray\", \"x - rays\"]\n2\n0.159487\n\n\n1720\n[\"x - ray\", \"x - rays\"]\n0\n0.0\n\n\n1730\n[\"x - ray\", \"x - rays\"]\n0\n0.0\n\n\n1740\n[\"x - ray\", \"x - rays\"]\n0\n0.0\n\n\n1750\n[\"x - ray\", \"x - rays\"]\n0\n0.0"
+  },
+  {
+    "objectID": "get-started.html#analyzing-data",
+    "href": "get-started.html#analyzing-data",
+    "title": "Get started",
+    "section": "Analyzing data",
+    "text": "Analyzing data\nTo analyze data, import TimeSeries:\n\nfrom google_ngrams import TimeSeries\n\nTo use TimeSeries, provide a polars DataFrame, a column that identifies the time sequence and a values column that identifies the frequency varieble:\n\nxray_ts = TimeSeries(time_series=xray_decade, time_col='Decade', values_col='RF')\n\nWe can now generate visualizations like a barplot of frequencies by decade:\n\nxray_ts.timeviz_barplot();\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nFilter data before VNC clustering\n\n\n\nNote that the frequencies in this example are 0 or near 0 until the turn of the twentieth century.\nVizualizing VNC clustering can be made clearer by filtering out extended periods with no data. Thus, plots like this bar plot (or a similar scatterplot for by-year data) can be combined to effectively describe trajectories of change and periodization."
+  },
+  {
+    "objectID": "get-started.html#filter-the-data",
+    "href": "get-started.html#filter-the-data",
+    "title": "Get started",
+    "section": "Filter the data",
+    "text": "Filter the data\n\nimport polars as pl\n\nxray_filtered = xray_decade.filter(pl.col(\"Decade\") &gt;= 1900)\n\nNow, instatiate the TimeSeries on the filtered data.\n\nxray_filtered_ts = TimeSeries(time_series=xray_filtered, time_col='Decade', values_col='RF')\n\nAnd create a VNC dendrogram.\n\nxray_filtered_ts.timeviz_vnc();\n\n\n\n\n\n\n\n\nDendgrams can also be contracted using the periodize=True option and designating a number of periods.\n\nxray_filtered_ts.timeviz_vnc(periodize=True, n_periods=4);"
+  },
+  {
+    "objectID": "time-series.html",
+    "href": "time-series.html",
+    "title": "Time series",
+    "section": "",
+    "text": "The TimeSeries can be used for generating scatterplots with smoothed fits, bar plots and variablity-based neighbor clustering dendrograms.\nOne of defining features of VNC dendrograms is that they maintain leaf order, as their motivating purpose is to aid in periodization from “the ground up”. A second, and often overlooked, feature of the VNC method is the calculation of distances. Rather than conventional euclidean measures, distances are calculated according either summed standard deviations or summed coefficients of variation.\nThe timeviz_vnc function follows both criteria as established in Gries and Hilpert’s original R code."
+  },
+  {
+    "objectID": "time-series.html#variability-based-neighbor-clustering",
+    "href": "time-series.html#variability-based-neighbor-clustering",
+    "title": "Time series",
+    "section": "Variability-based Neighbor Clustering",
+    "text": "Variability-based Neighbor Clustering\nAs a demonstration, we can replicate Gries and Hilpert’s demonstration plot.\n\nimport polars as pl\nfrom google_ngrams import TimeSeries, google_ngram\n\nHere is the data from their vignette:\n\ninput = [29.47368421, 42.20472441, 72.83870968, 76.72619048, \n           69.56521739, 62.42647059, 64.9122807, 118.9690722, \n           177.34375]\nyears = [1925, 1935, 1945, 1955, 1965, 1975, 1985, \n           1995, 2005]\n\nWe can put that into a polars DataFrame:\n\ndf = pl.DataFrame({\"Year\": years, \"RF\": input})\n\nAnd instatiate the class:\n\n\n\n\n\n\nImportant\n\n\n\nBe sure to identify the necessary column names: a time_col and a values_col.\n\n\n\nTS = TimeSeries(time_series=df, time_col=\"Year\", values_col=\"RF\")\n\nNow, the dendrogram can be plotted.\n\nTS.timeviz_vnc();\n\n\n\n\n\n\n\n\nThe output replicates the ouput produced in R:\n\n\n\nVNC\n\n\nIn addition, n_periods can be specified to “cut” the dendrogram:\n\nTS.timeviz_vnc(n_periods=3, cut_line=True);\n\n\n\n\n\n\n\n\nThe dendrogram can be also truncated like scipy dendrogram by setting periodize=True:\n\nTS.timeviz_vnc(n_periods=3, periodize=True, orientation=\"vertical\");\n\n\n\n\n\n\n\n\nAfter setting n_periods (whether or not periodize is set to True), clustering information can be returned:\n\nTS.cluster_summary()\n\nCluster 1 (n=7): ['1925', '1935', '1945', '1955', '1965', '1975', '1985']\nCluster 2 (n=1): ['1995']\nCluster 3 (n=1): ['2005']"
+  },
+  {
+    "objectID": "time-series.html#barplots",
+    "href": "time-series.html#barplots",
+    "title": "Time series",
+    "section": "Barplots",
+    "text": "Barplots\nSimple barplots (most appropriately for by-decade data), can also be generated using timeviz_barplot.\n\nTS.timeviz_barplot();\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nNote\n\n\n\nAlthough this function is provided for convenience, it’s easy enough to create and customize your own plots from the data returned by the google_ngram function."
+  },
+  {
+    "objectID": "time-series.html#scatterplots",
+    "href": "time-series.html#scatterplots",
+    "title": "Time series",
+    "section": "Scatterplots",
+    "text": "Scatterplots\nScatterplots with with a smoothed fit can be generated using timeviz_scatterplot. Because the fit is calcualted with a generalized additive model (GAM), scatterplots work best by by-year data. So for this, let’s generate some new data for lemmatized witch hunt starting in the 20th centur.\n\nword_forms = [\"witch hunt\", \"witch hunts\"]  # specify word forms\nwh_frequencies = google_ngram(word_forms, by=\"year\")  # fetch word forms\nwh_frequencies = wh_frequencies.filter(pl.col(\"Year\") &gt;= 1900)  # filter out data prior to 20th century\nTS = TimeSeries(wh_frequencies, time_col=\"Year\", values_col=\"RF\")  # processes time series\n\n\nAccessing repository. For larger ones\n(e.g., ngrams containing 2 or more words).\nThis may take a few minutes...\n\n\n\nNow we can plot the data:\n\nTS.timeviz_scatterplot();\n\n\n\n\n\n\n\n\nThe amount of smoothing can be decreased by setting the smoothing value closer to 1:\n\nTS.timeviz_scatterplot(smoothing=2);\n\n\n\n\n\n\n\n\nOr increased up to 9:\n\nTS.timeviz_scatterplot(smoothing=9);"
+  },
+  {
+    "objectID": "time-series.html#screeplots",
+    "href": "time-series.html#screeplots",
+    "title": "Time series",
+    "section": "Screeplots",
+    "text": "Screeplots\nFinally, screeplots can be generated to assist in determining the number of clusters in a dendrogram using timeviz_screeplot.\n\nTS.timeviz_screeplot();\n\n\n\n\n\n\n\n\nAgain, this is a convenience function. Users can create their own screeplots by accessing the distance values directly:\n\ndistances = TS.distances_sd\ndistances.tolist()[::-1][:10] # top 10 in decreasing order\n\n[1.244287572278826,\n 1.1444209391091797,\n 1.0826165341117355,\n 1.0310263250066853,\n 0.9869468502531034,\n 0.9492413638317966,\n 0.9111552215483907,\n 0.8784015699144656,\n 0.8490944199888234,\n 0.8203264485087725]"
+  },
+  {
+    "objectID": "reference/timeviz_screeplot.html",
+    "href": "reference/timeviz_screeplot.html",
+    "title": "timeviz_screeplot",
+    "section": "",
+    "text": "TimeSeries.timeviz_screeplot(\n    width=6,\n    height=3,\n    dpi=150,\n    point_size=0.75,\n    distance='sd',\n)\nGenerate a scree plot for determining clusters.\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\nwidth\n\nThe width of the plot.\n6\n\n\nheight\n\nThe height of the plot.\n3\n\n\ndpi\n\nThe resolution of the plot.\n150\n\n\npoint_size\n\nThe size of the points.\n0.75\n\n\ndistance\n\nOne of ‘sd’ (standard deviation) or ‘cv’ (coefficient of variation).\n'sd'\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nFigure\nA matplotlib figure.",
+    "crumbs": [
+      "Get started",
+      "Time Series",
+      "`timeviz_screeplot`"
+    ]
+  },
+  {
+    "objectID": "reference/timeviz_screeplot.html#parameters",
+    "href": "reference/timeviz_screeplot.html#parameters",
+    "title": "timeviz_screeplot",
+    "section": "",
+    "text": "Name\nType\nDescription\nDefault\n\n\n\n\nwidth\n\nThe width of the plot.\n6\n\n\nheight\n\nThe height of the plot.\n3\n\n\ndpi\n\nThe resolution of the plot.\n150\n\n\npoint_size\n\nThe size of the points.\n0.75\n\n\ndistance\n\nOne of ‘sd’ (standard deviation) or ‘cv’ (coefficient of variation).\n'sd'",
+    "crumbs": [
+      "Get started",
+      "Time Series",
+      "`timeviz_screeplot`"
+    ]
+  },
+  {
+    "objectID": "reference/timeviz_screeplot.html#returns",
+    "href": "reference/timeviz_screeplot.html#returns",
+    "title": "timeviz_screeplot",
+    "section": "",
+    "text": "Name\nType\nDescription\n\n\n\n\n\nFigure\nA matplotlib figure.",
+    "crumbs": [
+      "Get started",
+      "Time Series",
+      "`timeviz_screeplot`"
+    ]
+  },
+  {
+    "objectID": "reference/timeviz_vnc.html",
+    "href": "reference/timeviz_vnc.html",
+    "title": "timeviz_vnc",
+    "section": "",
+    "text": "TimeSeries.timeviz_vnc(\n    width=6,\n    height=4,\n    dpi=150,\n    font_size=10,\n    n_periods=1,\n    distance='sd',\n    orientation='horizontal',\n    cut_line=False,\n    periodize=False,\n    hide_labels=False,\n)\nGenerate a dendrogram using the clustering method, “Variability-based Neighbor Clustering”(VNC), to identify periods in the historical development of P that accounts for the temporal ordering of the data.\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\nwidth\n\nThe width of the plot.\n6\n\n\nheight\n\nThe height of the plot.\n4\n\n\ndpi\n\nThe resolution of the plot.\n150\n\n\nfont_size\n\nThe font size for the labels.\n10\n\n\nn_periods\n\nThe number of periods (or clusters).\n1\n\n\ndistance\n\nOne of ‘sd’ (standard deviation) or ‘cv’ (coefficient of variation).\n'sd'\n\n\norientation\n\nThe orientation of the plot, either “horizontal” or “vertical”. cut_line: Whether or not to include a cut line; applies only to non-periodized plots. cut_line: Whether or not to include a cut line; applies only to non-periodized plots.\n'horizontal'\n\n\nperiodize\n\nThe dendrogram can be hard to read when the original observation matrix from which the linkage is derived is large. Periodization is used to condense the dendrogram. hide_labels: Whether or not to hide leaf labels.\nFalse\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nFigure\nA matplotlib figure.",
+    "crumbs": [
+      "Get started",
+      "Time Series",
+      "`timeviz_vnc`"
+    ]
+  },
+  {
+    "objectID": "reference/timeviz_vnc.html#parameters",
+    "href": "reference/timeviz_vnc.html#parameters",
+    "title": "timeviz_vnc",
+    "section": "",
+    "text": "Name\nType\nDescription\nDefault\n\n\n\n\nwidth\n\nThe width of the plot.\n6\n\n\nheight\n\nThe height of the plot.\n4\n\n\ndpi\n\nThe resolution of the plot.\n150\n\n\nfont_size\n\nThe font size for the labels.\n10\n\n\nn_periods\n\nThe number of periods (or clusters).\n1\n\n\ndistance\n\nOne of ‘sd’ (standard deviation) or ‘cv’ (coefficient of variation).\n'sd'\n\n\norientation\n\nThe orientation of the plot, either “horizontal” or “vertical”. cut_line: Whether or not to include a cut line; applies only to non-periodized plots. cut_line: Whether or not to include a cut line; applies only to non-periodized plots.\n'horizontal'\n\n\nperiodize\n\nThe dendrogram can be hard to read when the original observation matrix from which the linkage is derived is large. Periodization is used to condense the dendrogram. hide_labels: Whether or not to hide leaf labels.\nFalse",
+    "crumbs": [
+      "Get started",
+      "Time Series",
+      "`timeviz_vnc`"
+    ]
+  },
+  {
+    "objectID": "reference/timeviz_vnc.html#returns",
+    "href": "reference/timeviz_vnc.html#returns",
+    "title": "timeviz_vnc",
+    "section": "",
+    "text": "Name\nType\nDescription\n\n\n\n\n\nFigure\nA matplotlib figure.",
+    "crumbs": [
+      "Get started",
+      "Time Series",
+      "`timeviz_vnc`"
+    ]
+  },
+  {
+    "objectID": "reference/google_ngram.html",
+    "href": "reference/google_ngram.html",
+    "title": "google_ngram",
+    "section": "",
+    "text": "ngrams.google_ngram(word_forms, variety='eng', by='decade')\nFetches Google Ngram data for specified word forms.\nThis function retrieves ngram data from the Google Books Ngram Viewer for the given word forms. It supports different varieties of English (e.g., British, American) and allows aggregation by year or decade.\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\nword_forms\nList\nList of word forms to search for.\nrequired\n\n\nvariety\nstr\nVariety of English (‘eng’, ‘gb’, ‘us’, ‘fiction’).\n'eng'\n\n\nby\nstr\nAggregation level (‘year’ or ‘decade’).\n'decade'\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\npl.DataFrame\nDataFrame containing the ngram data.",
+    "crumbs": [
+      "Get started",
+      "Fetching Data",
+      "`google_ngram`"
+    ]
+  },
+  {
+    "objectID": "reference/google_ngram.html#parameters",
+    "href": "reference/google_ngram.html#parameters",
+    "title": "google_ngram",
+    "section": "",
+    "text": "Name\nType\nDescription\nDefault\n\n\n\n\nword_forms\nList\nList of word forms to search for.\nrequired\n\n\nvariety\nstr\nVariety of English (‘eng’, ‘gb’, ‘us’, ‘fiction’).\n'eng'\n\n\nby\nstr\nAggregation level (‘year’ or ‘decade’).\n'decade'",
+    "crumbs": [
+      "Get started",
+      "Fetching Data",
+      "`google_ngram`"
+    ]
+  },
+  {
+    "objectID": "reference/google_ngram.html#returns",
+    "href": "reference/google_ngram.html#returns",
+    "title": "google_ngram",
+    "section": "",
+    "text": "Name\nType\nDescription\n\n\n\n\n\npl.DataFrame\nDataFrame containing the ngram data.",
+    "crumbs": [
+      "Get started",
+      "Fetching Data",
+      "`google_ngram`"
+    ]
+  }
+]

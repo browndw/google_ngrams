@@ -73,14 +73,23 @@ import polars as pl
 xray_filtered = xray_decade.filter(pl.col("Decade") >= 1900)
 ```
 
+Now, instatiate the `TimeSeries` on the filtered data. 
 
 ```{python}
 xray_filtered_ts = TimeSeries(time_series=xray_filtered, time_col='Decade', values_col='RF')
 ```
 
+And create a VNC dendrogram.
 
 ```{python}
 xray_filtered_ts.timeviz_vnc();
+```
+
+Dendgrams can also be contracted using the `periodize=True` option and designating a number of periods.
+
+
+```{python}
+xray_filtered_ts.timeviz_vnc(periodize=True, n_periods=4);
 ```
 
 

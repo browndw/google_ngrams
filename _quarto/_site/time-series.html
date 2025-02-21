@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>google_ngrams - Get started</title>
+<title>google_ngrams - Time series</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -57,7 +57,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </style>
 
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js" integrity="sha512-bLT0Qm9VnAYZDflyKcBaQ2gg0hSYNQrJ8RilYldYQ1FxQYoCLtUjuuRuZo+fjqhx/qtq/1itJ0C2ejDxltZVFg==" crossorigin="anonymous"></script><script src="site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="site_libs/quarto-nav/quarto-nav.js"></script>
 <script src="site_libs/clipboard/clipboard.min.js"></script>
 <script src="site_libs/quarto-search/autocomplete.umd.js"></script>
 <script src="site_libs/quarto-search/fuse.min.js"></script>
@@ -100,9 +100,6 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     "search-label": "Search"
   }
 }</script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" integrity="sha512-c3Nl8+7g4LMSTdrm621y7kf9v3SDPnhxLNhcjFJbKECVnmZHTdo+IRO05sNLTH/D3vA6u1X32ehoLC7WFVdheg==" crossorigin="anonymous"></script>
-
-<script type="application/javascript">define('jquery', [],function() {return window.jQuery;})</script>
 
 
 </head>
@@ -128,11 +125,11 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
           <div class="collapse navbar-collapse" id="navbarCollapse">
             <ul class="navbar-nav navbar-nav-scroll me-auto">
   <li class="nav-item">
-    <a class="nav-link active" href="./get-started.html" aria-current="page"> 
+    <a class="nav-link" href="./get-started.html"> 
 <span class="menu-text">Get started</span></a>
   </li>  
   <li class="nav-item">
-    <a class="nav-link" href="./time-series.html"> 
+    <a class="nav-link active" href="./time-series.html" aria-current="page"> 
 <span class="menu-text">TimeSeries</span></a>
   </li>  
   <li class="nav-item">
@@ -174,7 +171,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title">Get started</h1>
+<h1 class="title">Time series</h1>
 </div>
 
 
@@ -191,227 +188,200 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </header>
 
 
-<p>The <code>google_ngram</code> function supports different varieties of English (e.g., British, American) and allows aggregation by year or decade. The package also supports the analysis of time series data using <code>TimeSeries</code>.</p>
-<section id="fetching-data" class="level2">
-<h2 class="anchored" data-anchor-id="fetching-data">Fetching data</h2>
-<p>First we will import the functions:</p>
-<div id="aaf955b2" class="cell" data-execution_count="1">
-<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> google_ngrams <span class="im">import</span> google_ngram</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<p>The <code>TimeSeries</code> can be used for generating scatterplots with smoothed fits, bar plots and variablity-based neighbor clustering dendrograms.</p>
+<p>One of defining features of VNC dendrograms is that they maintain leaf order, as their motivating purpose is to aid in periodization from “the ground up”. A second, and often overlooked, feature of the VNC method is the calculation of distances. Rather than conventional euclidean measures, distances are calculated according either summed standard deviations or summed coefficients of variation.</p>
+<p>The <code>timeviz_vnc</code> function follows both criteria as established in Gries and Hilpert’s original R code.</p>
+<section id="variability-based-neighbor-clustering" class="level2">
+<h2 class="anchored" data-anchor-id="variability-based-neighbor-clustering">Variability-based Neighbor Clustering</h2>
+<p>As a demonstration, we can replicate Gries and Hilpert’s <a href="https://global.oup.com/us/companion.websites/fdscontent/uscompanion/us/static/companion.websites/nevalainen/Gries-Hilpert_web_final/vnc.individual.html">demonstration plot</a>.</p>
+<div id="ae1e77e7" class="cell" data-execution_count="1">
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> polars <span class="im">as</span> pl</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> google_ngrams <span class="im">import</span> TimeSeries, google_ngram</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<p>Then, we can fetch, for example, <em>x-ray</em> by year in American English:</p>
-<div id="6ec2e58b" class="cell" data-execution_count="2">
-<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>xray_year <span class="op">=</span> google_ngram(word_forms <span class="op">=</span> [<span class="st">"x-ray"</span>], variety <span class="op">=</span> <span class="st">"us"</span>, by <span class="op">=</span> <span class="st">"year"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>
-Accessing repository. For larger ones
-(e.g., ngrams containing 2 or more words).
-This may take a few minutes...
-</code></pre>
+<p>Here is the data from their vignette:</p>
+<div id="3759033d" class="cell" data-execution_count="2">
+<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="bu">input</span> <span class="op">=</span> [<span class="fl">29.47368421</span>, <span class="fl">42.20472441</span>, <span class="fl">72.83870968</span>, <span class="fl">76.72619048</span>, </span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>           <span class="fl">69.56521739</span>, <span class="fl">62.42647059</span>, <span class="fl">64.9122807</span>, <span class="fl">118.9690722</span>, </span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>           <span class="fl">177.34375</span>]</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>years <span class="op">=</span> [<span class="dv">1925</span>, <span class="dv">1935</span>, <span class="dv">1945</span>, <span class="dv">1955</span>, <span class="dv">1965</span>, <span class="dv">1975</span>, <span class="dv">1985</span>, </span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>           <span class="dv">1995</span>, <span class="dv">2005</span>]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
+<p>We can put that into a polars DataFrame:</p>
+<div id="ee6082cd" class="cell" data-execution_count="3">
+<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>df <span class="op">=</span> pl.DataFrame({<span class="st">"Year"</span>: years, <span class="st">"RF"</span>: <span class="bu">input</span>})</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<div id="981e1bb8" class="cell" data-execution_count="3">
-<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>xray_year.head()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output cell-output-display" data-execution_count="3">
-<div><style>
-.dataframe > thead > tr,
-.dataframe > tbody > tr {
-  text-align: right;
-  white-space: pre-wrap;
-}
-</style>
-<small>shape: (5, 4)</small>
-<table class="dataframe table table-sm table-striped small" data-quarto-postprocess="true" data-border="1">
-<thead>
-<tr class="header">
-<th data-quarto-table-cell-role="th">Year</th>
-<th data-quarto-table-cell-role="th">Token</th>
-<th data-quarto-table-cell-role="th">AF</th>
-<th data-quarto-table-cell-role="th">RF</th>
-</tr>
-<tr class="odd">
-<th>i32</th>
-<th>list[str]</th>
-<th>i64</th>
-<th>f64</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td>1818</td>
-<td>["x - ray"]</td>
-<td>3</td>
-<td>0.046198</td>
-</tr>
-<tr class="even">
-<td>1819</td>
-<td>["x - ray"]</td>
-<td>0</td>
-<td>0.0</td>
-</tr>
-<tr class="odd">
-<td>1820</td>
-<td>["x - ray"]</td>
-<td>0</td>
-<td>0.0</td>
-</tr>
-<tr class="even">
-<td>1821</td>
-<td>["x - ray"]</td>
-<td>0</td>
-<td>0.0</td>
-</tr>
-<tr class="odd">
-<td>1822</td>
-<td>["x - ray"]</td>
-<td>0</td>
-<td>0.0</td>
-</tr>
-</tbody>
-</table>
-</div>
-</div>
-</div>
-<p>Alternatively, the following would return counts of the combined forms <em>x-ray</em> and <em>x-rays</em> in British English by decade:</p>
-<div id="c3a0ba7f" class="cell" data-execution_count="4">
-<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>xray_decade <span class="op">=</span> google_ngram(word_forms <span class="op">=</span> [<span class="st">"x-ray"</span>, <span class="st">"x-rays"</span>], variety <span class="op">=</span> <span class="st">"gb"</span>, by <span class="op">=</span> <span class="st">"decade"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>
-Accessing repository. For larger ones
-(e.g., ngrams containing 2 or more words).
-This may take a few minutes...
-</code></pre>
-</div>
-</div>
-<div id="2bb9d690" class="cell" data-execution_count="5">
-<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>xray_decade.head()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output cell-output-display" data-execution_count="5">
-<div><style>
-.dataframe > thead > tr,
-.dataframe > tbody > tr {
-  text-align: right;
-  white-space: pre-wrap;
-}
-</style>
-<small>shape: (5, 4)</small>
-<table class="dataframe table table-sm table-striped small" data-quarto-postprocess="true" data-border="1">
-<thead>
-<tr class="header">
-<th data-quarto-table-cell-role="th">Decade</th>
-<th data-quarto-table-cell-role="th">Token</th>
-<th data-quarto-table-cell-role="th">AF</th>
-<th data-quarto-table-cell-role="th">RF</th>
-</tr>
-<tr class="odd">
-<th>i32</th>
-<th>list[str]</th>
-<th>i64</th>
-<th>f64</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td>1710</td>
-<td>["x - ray", "x - rays"]</td>
-<td>2</td>
-<td>0.159487</td>
-</tr>
-<tr class="even">
-<td>1720</td>
-<td>["x - ray", "x - rays"]</td>
-<td>0</td>
-<td>0.0</td>
-</tr>
-<tr class="odd">
-<td>1730</td>
-<td>["x - ray", "x - rays"]</td>
-<td>0</td>
-<td>0.0</td>
-</tr>
-<tr class="even">
-<td>1740</td>
-<td>["x - ray", "x - rays"]</td>
-<td>0</td>
-<td>0.0</td>
-</tr>
-<tr class="odd">
-<td>1750</td>
-<td>["x - ray", "x - rays"]</td>
-<td>0</td>
-<td>0.0</td>
-</tr>
-</tbody>
-</table>
-</div>
-</div>
-</div>
-</section>
-<section id="analyzing-data" class="level2">
-<h2 class="anchored" data-anchor-id="analyzing-data">Analyzing data</h2>
-<p>To analyze data, import <code>TimeSeries</code>:</p>
-<div id="3bba9b2f" class="cell" data-execution_count="6">
-<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> google_ngrams <span class="im">import</span> TimeSeries</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-</div>
-<p>To use <code>TimeSeries</code>, provide a polars DataFrame, a column that identifies the time sequence and a values column that identifies the frequency varieble:</p>
-<div id="c693e1a3" class="cell" data-execution_count="7">
-<div class="sourceCode cell-code" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>xray_ts <span class="op">=</span> TimeSeries(time_series<span class="op">=</span>xray_decade, time_col<span class="op">=</span><span class="st">'Decade'</span>, values_col<span class="op">=</span><span class="st">'RF'</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-</div>
-<p>We can now generate visualizations like a barplot of frequencies by decade:</p>
-<div id="120eb70f" class="cell" data-execution_count="8">
-<div class="sourceCode cell-code" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>xray_ts.timeviz_barplot()<span class="op">;</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output cell-output-display">
-<div>
-<figure class="figure">
-<p><img src="get-started_files/figure-html/cell-9-output-1.png" class="img-fluid figure-img"></p>
-</figure>
-</div>
-</div>
-</div>
-<div class="callout callout-style-default callout-tip callout-titled">
+<p>And instatiate the class:</p>
+<div class="callout callout-style-default callout-important callout-titled">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">
 <i class="callout-icon"></i>
 </div>
 <div class="callout-title-container flex-fill">
-Filter data before VNC clustering
+Important
 </div>
 </div>
 <div class="callout-body-container callout-body">
-<p>Note that the frequencies in this example are 0 or near 0 until the turn of the twentieth century.</p>
-<p>Vizualizing VNC clustering can be made clearer by filtering out extended periods with no data. Thus, plots like this bar plot (or a similar scatterplot for by-year data) can be combined to effectively describe trajectories of change and periodization.</p>
+<p>Be sure to identify the necessary column names: a <code>time_col</code> and a <code>values_col</code>.</p>
+</div>
+</div>
+<div id="39c14eac" class="cell" data-execution_count="4">
+<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>TS <span class="op">=</span> TimeSeries(time_series<span class="op">=</span>df, time_col<span class="op">=</span><span class="st">"Year"</span>, values_col<span class="op">=</span><span class="st">"RF"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Now, the dendrogram can be plotted.</p>
+<div id="e60cd496" class="cell" data-execution_count="5">
+<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>TS.timeviz_vnc()<span class="op">;</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="time-series_files/figure-html/cell-6-output-1.png" class="img-fluid figure-img"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>The output replicates <a href="https://global.oup.com/us/companion.websites/fdscontent/uscompanion/us/static/companion.websites/nevalainen/Gries-Hilpert_web_final/vnc.individual.html">the ouput produced in R</a>:</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="vnc_output1.png" class="img-fluid figure-img" style="width:80.0%"></p>
+<figcaption>VNC</figcaption>
+</figure>
+</div>
+<p>In addition, <code>n_periods</code> can be specified to “cut” the dendrogram:</p>
+<div id="76306531" class="cell" data-execution_count="6">
+<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>TS.timeviz_vnc(n_periods<span class="op">=</span><span class="dv">3</span>, cut_line<span class="op">=</span><span class="va">True</span>)<span class="op">;</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="time-series_files/figure-html/cell-7-output-1.png" class="img-fluid figure-img"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>The dendrogram can be also truncated like <a href="https://docs.scipy.org/doc/scipy/reference/generated/scipy.cluster.hierarchy.dendrogram.html">scipy dendrogram</a> by setting <code>periodize=True</code>:</p>
+<div id="a14157d2" class="cell" data-execution_count="7">
+<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>TS.timeviz_vnc(n_periods<span class="op">=</span><span class="dv">3</span>, periodize<span class="op">=</span><span class="va">True</span>, orientation<span class="op">=</span><span class="st">"vertical"</span>)<span class="op">;</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="time-series_files/figure-html/cell-8-output-1.png" class="img-fluid figure-img"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>After setting <code>n_periods</code> (whether or not <code>periodize</code> is set to <code>True</code>), clustering information can be returned:</p>
+<div id="912d30f8" class="cell" data-execution_count="8">
+<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>TS.cluster_summary()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Cluster 1 (n=7): ['1925', '1935', '1945', '1955', '1965', '1975', '1985']
+Cluster 2 (n=1): ['1995']
+Cluster 3 (n=1): ['2005']</code></pre>
 </div>
 </div>
 </section>
-<section id="filter-the-data" class="level2">
-<h2 class="anchored" data-anchor-id="filter-the-data">Filter the data</h2>
-<div id="386e4f6a" class="cell" data-execution_count="9">
-<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> polars <span class="im">as</span> pl</span>
-<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>xray_filtered <span class="op">=</span> xray_decade.<span class="bu">filter</span>(pl.col(<span class="st">"Decade"</span>) <span class="op">&gt;=</span> <span class="dv">1900</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-</div>
-<p>Now, instatiate the <code>TimeSeries</code> on the filtered data.</p>
-<div id="29c45fc6" class="cell" data-execution_count="10">
-<div class="sourceCode cell-code" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>xray_filtered_ts <span class="op">=</span> TimeSeries(time_series<span class="op">=</span>xray_filtered, time_col<span class="op">=</span><span class="st">'Decade'</span>, values_col<span class="op">=</span><span class="st">'RF'</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-</div>
-<p>And create a VNC dendrogram.</p>
-<div id="4242edff" class="cell" data-execution_count="11">
-<div class="sourceCode cell-code" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>xray_filtered_ts.timeviz_vnc()<span class="op">;</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<section id="barplots" class="level2">
+<h2 class="anchored" data-anchor-id="barplots">Barplots</h2>
+<p>Simple barplots (most appropriately for by-decade data), can also be generated using <a href="./reference/timeviz_barplot.html#google_ngrams.TimeSeries.timeviz_barplot"><code>timeviz_barplot</code></a>.</p>
+<div id="453c1a8f" class="cell" data-execution_count="9">
+<div class="sourceCode cell-code" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>TS.timeviz_barplot()<span class="op">;</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="get-started_files/figure-html/cell-12-output-1.png" class="img-fluid figure-img"></p>
+<p><img src="time-series_files/figure-html/cell-10-output-1.png" class="img-fluid figure-img"></p>
 </figure>
 </div>
 </div>
 </div>
-<p>Dendgrams can also be contracted using the <code>periodize=True</code> option and designating a number of periods.</p>
-<div id="c69d9f70" class="cell" data-execution_count="12">
-<div class="sourceCode cell-code" id="cb14"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>xray_filtered_ts.timeviz_vnc(periodize<span class="op">=</span><span class="va">True</span>, n_periods<span class="op">=</span><span class="dv">4</span>)<span class="op">;</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Note
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Although this function is provided for convenience, it’s easy enough to create and customize your own plots from the data returned by the <code>google_ngram</code> function.</p>
+</div>
+</div>
+</section>
+<section id="scatterplots" class="level2">
+<h2 class="anchored" data-anchor-id="scatterplots">Scatterplots</h2>
+<p>Scatterplots with with a smoothed fit can be generated using <a href="./reference/timeviz_scatterplot.html#google_ngrams.TimeSeries.timeviz_scatterplot"><code>timeviz_scatterplot</code></a>. Because the fit is calcualted with a generalized additive model (GAM), scatterplots work best by by-year data. So for this, let’s generate some new data for lemmatized <em>witch hunt</em> starting in the 20th centur.</p>
+<div id="1e5c4c45" class="cell" data-execution_count="10">
+<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>word_forms <span class="op">=</span> [<span class="st">"witch hunt"</span>, <span class="st">"witch hunts"</span>]  <span class="co"># specify word forms</span></span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>wh_frequencies <span class="op">=</span> google_ngram(word_forms, by<span class="op">=</span><span class="st">"year"</span>)  <span class="co"># fetch word forms</span></span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>wh_frequencies <span class="op">=</span> wh_frequencies.<span class="bu">filter</span>(pl.col(<span class="st">"Year"</span>) <span class="op">&gt;=</span> <span class="dv">1900</span>)  <span class="co"># filter out data prior to 20th century</span></span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>TS <span class="op">=</span> TimeSeries(wh_frequencies, time_col<span class="op">=</span><span class="st">"Year"</span>, values_col<span class="op">=</span><span class="st">"RF"</span>)  <span class="co"># processes time series</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Accessing repository. For larger ones
+(e.g., ngrams containing 2 or more words).
+This may take a few minutes...
+</code></pre>
+</div>
+</div>
+<p>Now we can plot the data:</p>
+<div id="f1103a73" class="cell" data-execution_count="11">
+<div class="sourceCode cell-code" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>TS.timeviz_scatterplot()<span class="op">;</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="get-started_files/figure-html/cell-13-output-1.png" class="img-fluid figure-img"></p>
+<p><img src="time-series_files/figure-html/cell-12-output-1.png" class="img-fluid figure-img"></p>
 </figure>
 </div>
+</div>
+</div>
+<p>The amount of smoothing can be decreased by setting the <code>smoothing</code> value closer to 1:</p>
+<div id="1a4726af" class="cell" data-execution_count="12">
+<div class="sourceCode cell-code" id="cb14"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>TS.timeviz_scatterplot(smoothing<span class="op">=</span><span class="dv">2</span>)<span class="op">;</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="time-series_files/figure-html/cell-13-output-1.png" class="img-fluid figure-img"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>Or increased up to 9:</p>
+<div id="81bd8974" class="cell" data-execution_count="13">
+<div class="sourceCode cell-code" id="cb15"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>TS.timeviz_scatterplot(smoothing<span class="op">=</span><span class="dv">9</span>)<span class="op">;</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="time-series_files/figure-html/cell-14-output-1.png" class="img-fluid figure-img"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="screeplots" class="level2">
+<h2 class="anchored" data-anchor-id="screeplots">Screeplots</h2>
+<p>Finally, screeplots can be generated to assist in determining the number of clusters in a dendrogram using <a href="./reference/timeviz_screeplot.html#google_ngrams.TimeSeries.timeviz_screeplot"><code>timeviz_screeplot</code></a>.</p>
+<div id="3a3964dd" class="cell" data-execution_count="14">
+<div class="sourceCode cell-code" id="cb16"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>TS.timeviz_screeplot()<span class="op">;</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="time-series_files/figure-html/cell-15-output-1.png" class="img-fluid figure-img"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>Again, this is a convenience function. Users can create their own screeplots by accessing the distance values directly:</p>
+<div id="477d9dca" class="cell" data-execution_count="15">
+<div class="sourceCode cell-code" id="cb17"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a>distances <span class="op">=</span> TS.distances_sd</span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>distances.tolist()[::<span class="op">-</span><span class="dv">1</span>][:<span class="dv">10</span>] <span class="co"># top 10 in decreasing order</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display" data-execution_count="15">
+<pre><code>[1.244287572278826,
+ 1.1444209391091797,
+ 1.0826165341117355,
+ 1.0310263250066853,
+ 0.9869468502531034,
+ 0.9492413638317966,
+ 0.9111552215483907,
+ 0.8784015699144656,
+ 0.8490944199888234,
+ 0.8203264485087725]</code></pre>
 </div>
 </div>
 

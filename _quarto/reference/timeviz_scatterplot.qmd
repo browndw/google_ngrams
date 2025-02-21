@@ -7,7 +7,8 @@ TimeSeries.timeviz_scatterplot(
     dpi=150,
     point_color='black',
     point_size=0.5,
-    ci='standard',
+    smoothing=7,
+    confidence_interval=True,
 )
 ```
 
@@ -16,14 +17,15 @@ with a smoothed fit line and a confidence interval.
 
 ## Parameters {.doc-section .doc-section-parameters}
 
-| Name        | Type   | Description                                                                   | Default      |
-|-------------|--------|-------------------------------------------------------------------------------|--------------|
-| width       |        | The width of the plot.                                                        | `8`          |
-| height      |        | The height of the plot.                                                       | `4`          |
-| dpi         |        | The resolution of the plot.                                                   | `150`        |
-| point_color |        | The color of the points.                                                      | `'black'`    |
-| point_size  |        | The size of the points.                                                       | `0.5`        |
-| ci          |        | The confidence interval. One of "standard" (95%), "strict" (97.5%) or "both". | `'standard'` |
+| Name                | Type   | Description                                                | Default   |
+|---------------------|--------|------------------------------------------------------------|-----------|
+| width               |        | The width of the plot.                                     | `8`       |
+| height              |        | The height of the plot.                                    | `4`       |
+| dpi                 |        | The resolution of the plot.                                | `150`     |
+| point_color         |        | The color of the points.                                   | `'black'` |
+| point_size          |        | The size of the points.                                    | `0.5`     |
+| smoothing           |        | A value between 1 and 9 specifying magnitude of smoothing. | `7`       |
+| confidence_interval |        | Whether to plot a confidence interval.                     | `True`    |
 
 ## Returns {.doc-section .doc-section-returns}
 
